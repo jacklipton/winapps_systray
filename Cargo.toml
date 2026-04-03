@@ -1,6 +1,0 @@
-[package]
-name = "winapps_systray"
-version = "0.1.0"
-edition = "2024"
-
-[dependencies]
