@@ -2,6 +2,7 @@ package tray
 
 import (
 	"fmt"
+	"log"
 	"time"
 	"github.com/getlantern/systray"
 	"github.com/jacklipton/winapps_systray/pkg/container"
@@ -57,7 +58,10 @@ func (t *TrayManager) updateUI(state container.State) {
 
 func (t *TrayManager) statusLoop() {
 	for {
-		status, _ := t.ctrl.GetStatus()
+		status, err := t.ctrl.GetStatus()
+		if err != nil {
+			log.Printf("status poll error: %v", err)
+		}
 		t.updateUI(status)
 		time.Sleep(5 * time.Second)
 	}

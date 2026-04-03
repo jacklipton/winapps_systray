@@ -81,9 +81,22 @@ func (c *Controller) pollState() (State, error) {
 		return StateError, fmt.Errorf("compose ps: %w", err)
 	}
 
+	if len(output) == 0 {
+		return StateStopped, nil
+	}
+
+	// Docker Compose outputs NDJSON (one object per line), not a JSON array.
+	// Try array first for forward-compatibility, then fall back to NDJSON.
 	var containers []containerInfo
 	if err := json.Unmarshal(output, &containers); err != nil {
-		return StateError, fmt.Errorf("parse compose output: %w", err)
+		dec := json.NewDecoder(strings.NewReader(string(output)))
+		for dec.More() {
+			var info containerInfo
+			if err := dec.Decode(&info); err != nil {
+				return StateError, fmt.Errorf("parse compose output: %w", err)
+			}
+			containers = append(containers, info)
+		}
 	}
 
 	for _, info := range containers {

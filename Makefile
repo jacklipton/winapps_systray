@@ -6,6 +6,18 @@ PREFIX  ?= /usr/local
 BINDIR   = $(PREFIX)/bin
 DATADIR  = $(PREFIX)/share
 
+help:
+	@echo "Targets:"
+	@echo "  build              Compile the binary to build/"
+	@echo "  install            Install system-wide (requires root)"
+	@echo "  install-autostart  Install + add to /etc/xdg/autostart"
+	@echo "  user-install       Install to ~/.local and add to autostart"
+	@echo "  user-uninstall     Remove user installation"
+	@echo "  uninstall          Remove system-wide installation"
+	@echo "  rpm                Build an RPM package (requires nfpm)"
+	@echo "  deb                Build a DEB package (requires nfpm)"
+	@echo "  clean              Remove build/"
+
 all: build
 
 build:
@@ -48,4 +60,4 @@ deb: build
 clean:
 	rm -rf $(BUILDDIR)
 
-.PHONY: all build install install-autostart user-install user-uninstall uninstall rpm deb clean
+.PHONY: all help build install install-autostart user-install user-uninstall uninstall rpm deb clean
