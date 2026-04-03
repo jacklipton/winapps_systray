@@ -1,0 +1,8 @@
+[Desktop Entry]
+Name=WinApps Systray
+Comment=System tray controller for WinApps containers
+Exec=winapps-systray
+Icon=winapps-systray
+Terminal=false
+Type=Application
+X-GNOME-Autostart-enabled=true

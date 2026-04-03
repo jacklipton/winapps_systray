@@ -1,0 +1,10 @@
+[Desktop Entry]
+Name=WinApps Systray
+Comment=System tray controller for WinApps containers
+Exec=winapps-systray
+Icon=winapps-systray
+Terminal=false
+Type=Application
+Categories=System;Utility;
+Keywords=windows;vm;container;docker;podman;winapps;
+StartupNotify=false

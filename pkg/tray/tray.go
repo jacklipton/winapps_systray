@@ -67,20 +67,18 @@ func (t *TrayManager) clickLoop(mQuit *systray.MenuItem) {
 	for {
 		select {
 		case <-t.mToggle.ClickedCh:
-			status, _ := t.ctrl.GetStatus()
-			if status == container.StateRunning {
-				t.updateUI(container.StateStopping)
-				go func() {
+			// Re-check state inside the goroutine so we act on the most
+			// current value, not a snapshot from before the goroutine runs.
+			go func() {
+				status, _ := t.ctrl.GetStatus()
+				if status == container.StateRunning {
 					t.ctrl.Stop()
 					t.ctrl.WaitUntilState(container.StateStopped, 120*time.Second)
-				}()
-			} else if status == container.StateStopped {
-				t.updateUI(container.StateStarting)
-				go func() {
+				} else if status == container.StateStopped {
 					t.ctrl.Start()
 					t.ctrl.WaitUntilState(container.StateRunning, 60*time.Second)
-				}()
-			}
+				}
+			}()
 		case <-t.mKill.ClickedCh:
 			t.ctrl.Kill()
 		case <-mQuit.ClickedCh:

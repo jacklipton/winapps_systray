@@ -1,0 +1,31 @@
+name: winapps-systray
+arch: amd64
+version: 0.1.0
+release: 1
+maintainer: Jack Lipton
+description: System tray controller for WinApps containers
+license: MIT
+homepage: https://github.com/jacklipton/winapps_systray
+
+depends:
+  - gtk3
+  - libayatana-appindicator-gtk3
+
+rpm:
+  group: System Environment/Base
+
+contents:
+  - src: build/winapps-systray
+    dst: /usr/bin/winapps-systray
+    file_info:
+      mode: 0755
+
+  - src: dist/winapps-systray.desktop
+    dst: /usr/share/applications/winapps-systray.desktop
+
+  - src: dist/winapps-systray.svg
+    dst: /usr/share/icons/hicolor/scalable/apps/winapps-systray.svg
+
+  - src: dist/winapps-systray-autostart.desktop
+    dst: /etc/xdg/autostart/winapps-systray.desktop
+    type: config

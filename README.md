@@ -1,52 +1,108 @@
 # WinApps Systray
 
-A high-performance, minimal-overhead system tray application for managing [WinApps](https://github.com/winapps-org/winapps) containers on Linux (GNOME, KDE, etc.).
+A system tray application for managing [WinApps](https://github.com/winapps-org/winapps) containers on Linux.
+
+Start/stop your Windows VM with a single click and free up 4GB+ of RAM when you're not using it.
 
 ## Features
 
-- **Toggle Windows:** Start and stop your WinApps container with a single click.
-- **Resource Management:** Easily free up 4GB+ of RAM by shutting down the Windows VM when not in use.
-- **Status Indicators:** Color-coded tray icons reflect the current state (Running, Stopped, Starting, Stopping).
-- **Wait & Verify:** Gracefully handles the shutdown process with a 120s grace period.
-- **Force Kill:** Option to forcefully terminate the container if it hangs during shutdown.
-- **Auto-Discovery:** Automatically detects `~/winapps` and works with both **Docker** and **Podman**.
+- **One-click toggle** to start and stop your WinApps container
+- **Status icons** — green (running), grey (stopped), yellow (transitioning)
+- **Force kill** option if the container hangs during shutdown
+- **Auto-discovery** of your winapps directory
+- **Docker and Podman** support
+- **Autostart** with your desktop session
 
-## Prerequisites
+## Install
 
-To build this application on Fedora, you need the following development headers:
+### From package (Fedora/Ubuntu)
+
+Download the latest `.rpm` or `.deb` from [Releases](https://github.com/jacklipton/winapps_systray/releases):
+
+```bash
+# Fedora
+sudo dnf install winapps-systray-*.rpm
+
+# Ubuntu/Debian
+sudo dpkg -i winapps-systray-*.deb
+```
+
+### From source
+
+Build dependencies (Fedora):
 
 ```bash
 sudo dnf install libayatana-appindicator-gtk3-devel gtk3-devel golang
 ```
 
-## Installation & Building
+Build dependencies (Ubuntu/Debian):
 
-1. **Clone or move to the project directory:**
-   ```bash
-   cd ~/code_projects/winapps_systray
-   ```
+```bash
+sudo apt install libayatana-appindicator3-dev libgtk-3-dev golang
+```
 
-2. **Build the binary:**
-   ```bash
-   make build
-   ```
+Then build and install:
 
-3. **Run the application:**
-   ```bash
-   ./winapps_systray &
-   ```
+```bash
+git clone https://github.com/jacklipton/winapps_systray.git
+cd winapps_systray
+
+# System-wide (requires sudo)
+make install-autostart
+
+# User-local (no sudo needed)
+make user-install
+```
 
 ## Configuration
 
-The application automatically looks for your WinApps installation in `~/winapps`. It parses your `compose.yaml` to identify the container name and uses your system's default container engine (Docker or Podman).
+The app auto-discovers your winapps directory by checking these locations in order:
 
-## Development
+1. `WINAPPS_DIR` environment variable
+2. `~/.config/winapps-systray/config` (a file containing the path)
+3. `~/winapps`
+4. `~/.winapps`
+5. `~/Documents/winapps`
 
-The project is structured as follows:
-- `pkg/discovery`: Logic for finding the WinApps directory and configuration.
-- `pkg/container`: Wrapper for Docker/Podman CLI commands and status polling.
-- `pkg/tray`: System tray UI management and event loop.
-- `assets`: Embedded 16x16 icons for status representation.
+The directory must contain a `compose.yaml` (or `compose.yml` / `docker-compose.yaml`).
+
+To set a custom path:
+
+```bash
+# Option A: environment variable
+export WINAPPS_DIR=/path/to/your/winapps
+
+# Option B: config file
+mkdir -p ~/.config/winapps-systray
+echo "/path/to/your/winapps" > ~/.config/winapps-systray/config
+```
+
+## Building packages
+
+To build `.rpm` or `.deb` packages, install [nfpm](https://nfpm.goreleaser.com/install/) and run:
+
+```bash
+make rpm   # Fedora/RHEL
+make deb   # Ubuntu/Debian
+```
+
+## Uninstall
+
+```bash
+# System-wide
+sudo make uninstall
+
+# User-local
+make user-uninstall
+```
+
+## Project structure
+
+- `pkg/discovery` — finds the winapps directory and detects docker/podman
+- `pkg/container` — wraps compose commands and tracks container state
+- `pkg/tray` — system tray UI and event loop
+- `assets` — embedded tray icons
 
 ## License
+
 MIT
