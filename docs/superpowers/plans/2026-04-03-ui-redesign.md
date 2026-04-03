@@ -150,14 +150,16 @@ func defaults() Settings {
 	}
 }
 
-// Load reads settings from path. If the file doesn't exist, returns defaults.
-// Fields missing from the JSON get default values.
+// Load reads settings from path. If the file doesn't exist, writes defaults
+// and returns them. Fields missing from the JSON get default values.
 func Load(path string) (*Settings, error) {
 	cfg := defaults()
 
 	data, err := os.ReadFile(path)
 	if err != nil {
 		if errors.Is(err, fs.ErrNotExist) {
+			// Write defaults on first run
+			writeDefaults(path, &cfg)
 			return &cfg, nil
 		}
 		return nil, err
@@ -183,7 +185,23 @@ func Load(path string) (*Settings, error) {
 
 	return &cfg, nil
 }
+
+// writeDefaults creates the settings file with default values.
+// Errors are logged but not fatal — config is non-critical.
+func writeDefaults(path string, cfg *Settings) {
+	dir := filepath.Dir(path)
+	if err := os.MkdirAll(dir, 0755); err != nil {
+		log.Printf("warning: cannot create config dir %s: %v", dir, err)
+		return
+	}
+	data, _ := json.MarshalIndent(cfg, "", "  ")
+	if err := os.WriteFile(path, data, 0644); err != nil {
+		log.Printf("warning: cannot write default settings to %s: %v", path, err)
+	}
+}
 ```
+
+**Note:** Add `"path/filepath"` to the imports at the top of config.go.
 
 - [ ] **Step 5: Run tests to verify they pass**
 
@@ -300,7 +318,7 @@ func TestSetupCreatesIconFiles(t *testing.T) {
 		t.Fatalf("Setup failed: %v", err)
 	}
 
-	// Should create running, stopped, and 4 transition frames
+	// Should create running, stopped, 4 starting frames, and 4 stopping frames
 	expectedFiles := []string{
 		"winapps-running.svg",
 		"winapps-stopped.svg",
@@ -308,6 +326,10 @@ func TestSetupCreatesIconFiles(t *testing.T) {
 		"winapps-starting-1.svg",
 		"winapps-starting-2.svg",
 		"winapps-starting-3.svg",
+		"winapps-stopping-0.svg",
+		"winapps-stopping-1.svg",
+		"winapps-stopping-2.svg",
+		"winapps-stopping-3.svg",
 	}
 	for _, name := range expectedFiles {
 		path := filepath.Join(dir, name)
@@ -325,6 +347,10 @@ func TestSetupCreatesIconFiles(t *testing.T) {
 	frames := mgr.StartingFrames()
 	if len(frames) != 4 {
 		t.Errorf("expected 4 starting frames, got %d", len(frames))
+	}
+	stopFrames := mgr.StoppingFrames()
+	if len(stopFrames) != 4 {
+		t.Errorf("expected 4 stopping frames, got %d", len(stopFrames))
 	}
 }
 
@@ -367,8 +393,9 @@ import (
 
 // Manager manages tray icon SVG files in a directory.
 type Manager struct {
-	dir            string
-	startingFrames []string
+	dir             string
+	startingFrames  []string
+	stoppingFrames  []string
 }
 
 // Setup writes all icon SVG files to dir and returns a Manager.
@@ -378,7 +405,7 @@ func Setup(dir string) (*Manager, error) {
 		"winapps-stopped.svg": svgIcon("#555555", [4]float64{0.4, 0.3, 0.3, 0.2}),
 	}
 
-	// 4 animation frames: each highlights one pane clockwise
+	// 4 starting frames: each highlights one pane clockwise
 	// Pane order: 0=top-left, 1=top-right, 2=bottom-right, 3=bottom-left
 	startingFrames := make([]string, 4)
 	for i := 0; i < 4; i++ {
@@ -389,29 +416,33 @@ func Setup(dir string) (*Manager, error) {
 		startingFrames[i] = fmt.Sprintf("winapps-starting-%d", i)
 	}
 
+	// 4 stopping frames: reverse order, background progressively dims
+	// BL → BR → TR → TL, bg goes from #0078D4 → #3a5f8a → #555 → #444
+	stoppingFrames := make([]string, 4)
+	stoppingBgs := [4]string{"#0068B8", "#3a5f8a", "#555555", "#444444"}
+	stoppingOrder := [4]int{3, 2, 1, 0} // BL, BR, TR, TL
+	for i := 0; i < 4; i++ {
+		name := fmt.Sprintf("winapps-stopping-%d.svg", i)
+		opacities := [4]float64{0.25, 0.25, 0.25, 0.25}
+		opacities[stoppingOrder[i]] = 0.85
+		icons[name] = svgIcon(stoppingBgs[i], opacities)
+		stoppingFrames[i] = fmt.Sprintf("winapps-stopping-%d", i)
+	}
+
 	for name, content := range icons {
 		if err := os.WriteFile(filepath.Join(dir, name), []byte(content), 0644); err != nil {
 			return nil, fmt.Errorf("write icon %s: %w", name, err)
 		}
 	}
 
-	return &Manager{dir: dir, startingFrames: startingFrames}, nil
+	return &Manager{dir: dir, startingFrames: startingFrames, stoppingFrames: stoppingFrames}, nil
 }
 
 func (m *Manager) Dir() string              { return m.dir }
 func (m *Manager) RunningName() string       { return "winapps-running" }
 func (m *Manager) StoppedName() string       { return "winapps-stopped" }
 func (m *Manager) StartingFrames() []string  { return m.startingFrames }
-
-// StoppingFrames returns the starting frames in reverse order.
-func (m *Manager) StoppingFrames() []string {
-	frames := m.startingFrames
-	reversed := make([]string, len(frames))
-	for i, f := range frames {
-		reversed[len(frames)-1-i] = f
-	}
-	return reversed
-}
+func (m *Manager) StoppingFrames() []string   { return m.stoppingFrames }
 
 // svgIcon generates an SVG string for the winapps icon.
 // bgColor is the background fill. opacities are for panes:
@@ -692,6 +723,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/gotk3/gotk3/gdk"
 	"github.com/gotk3/gotk3/glib"
 	"github.com/gotk3/gotk3/gtk"
 	"github.com/jacklipton/winapps_systray/pkg/config"
@@ -737,8 +769,14 @@ func NewTrayManager(ctrl *container.Controller, cfg *config.Settings, iconMgr *i
 }
 
 func (t *TrayManager) Setup() {
+	// Load CSS for status header coloring
+	loadCSS()
+
 	// Build GTK menu
 	menu, _ := gtk.MenuNew()
+
+	// Refresh stats every time the menu is shown
+	menu.Connect("show", func() { t.pollAndUpdate() })
 
 	t.mStatus = addMenuItem(menu, "WinApps — Unknown", nil)
 	t.mStatus.SetSensitive(false)
@@ -809,6 +847,7 @@ func (t *TrayManager) updateUI(state container.State) {
 	case container.StateRunning:
 		t.ind.SetIcon(t.iconMgr.RunningName())
 		t.mStatus.SetLabel("● WinApps — Running")
+		t.setStatusClass("status-running")
 		t.mToggle.SetLabel("Stop Windows")
 		t.mToggle.SetSensitive(true)
 		t.mKill.SetSensitive(false)
@@ -824,6 +863,7 @@ func (t *TrayManager) updateUI(state container.State) {
 	case container.StateStopped:
 		t.ind.SetIcon(t.iconMgr.StoppedName())
 		t.mStatus.SetLabel("● WinApps — Stopped")
+		t.setStatusClass("status-stopped")
 		t.mToggle.SetLabel("Start Windows")
 		t.mToggle.SetSensitive(true)
 		t.mKill.SetSensitive(false)
@@ -833,6 +873,7 @@ func (t *TrayManager) updateUI(state container.State) {
 
 	case container.StateStarting:
 		t.mStatus.SetLabel("● WinApps — Starting...")
+		t.setStatusClass("status-transition")
 		t.mToggle.SetLabel("Starting...")
 		t.mToggle.SetSensitive(false)
 		t.mKill.SetSensitive(false)
@@ -841,6 +882,7 @@ func (t *TrayManager) updateUI(state container.State) {
 
 	case container.StateStopping:
 		t.mStatus.SetLabel("● WinApps — Stopping...")
+		t.setStatusClass("status-transition")
 		t.mToggle.SetLabel("Stopping...")
 		t.mToggle.SetSensitive(false)
 		t.mKill.SetSensitive(true)
@@ -866,14 +908,27 @@ func (t *TrayManager) stopAnimation() {
 
 func (t *TrayManager) onToggle() {
 	status, _ := t.ctrl.GetStatus()
+	iconPath := t.iconMgr.Dir() + "/winapps-running.svg"
+	stoppedIcon := t.iconMgr.Dir() + "/winapps-stopped.svg"
+
 	if status == container.StateRunning {
 		glib.IdleAdd(func() bool { t.updateUI(container.StateStopping); return false })
-		t.ctrl.Stop()
-		t.ctrl.WaitUntilState(container.StateStopped, time.Duration(t.cfg.StopTimeoutSeconds)*time.Second)
+		if err := t.ctrl.Stop(); err != nil && t.cfg.Notifications {
+			notify.Send("WinApps", fmt.Sprintf("Failed to stop Windows VM: %v", err), stoppedIcon)
+			return
+		}
+		if err := t.ctrl.WaitUntilState(container.StateStopped, time.Duration(t.cfg.StopTimeoutSeconds)*time.Second); err != nil && t.cfg.Notifications {
+			notify.Send("WinApps", "Windows VM is taking longer than expected to stop", stoppedIcon)
+		}
 	} else if status == container.StateStopped {
 		glib.IdleAdd(func() bool { t.updateUI(container.StateStarting); return false })
-		t.ctrl.Start()
-		t.ctrl.WaitUntilState(container.StateRunning, time.Duration(t.cfg.StartTimeoutSeconds)*time.Second)
+		if err := t.ctrl.Start(); err != nil && t.cfg.Notifications {
+			notify.Send("WinApps", fmt.Sprintf("Failed to start Windows VM: %v", err), iconPath)
+			return
+		}
+		if err := t.ctrl.WaitUntilState(container.StateRunning, time.Duration(t.cfg.StartTimeoutSeconds)*time.Second); err != nil && t.cfg.Notifications {
+			notify.Send("WinApps", "Windows VM is taking longer than expected to start", iconPath)
+		}
 	}
 }
 
@@ -919,7 +974,30 @@ func formatDuration(d time.Duration) string {
 	}
 	return fmt.Sprintf("%dm", m)
 }
+
+// loadCSS injects CSS for the status header background coloring.
+func loadCSS() {
+	css, _ := gtk.CssProviderNew()
+	css.LoadFromData(`
+		.status-running { background-color: rgba(76, 175, 80, 0.15); }
+		.status-stopped { background-color: rgba(158, 158, 158, 0.15); }
+		.status-transition { background-color: rgba(255, 152, 0, 0.15); }
+	`)
+	screen, _ := gdk.ScreenGetDefault()
+	gtk.AddProviderForScreen(screen, css, gtk.STYLE_PROVIDER_PRIORITY_APPLICATION)
+}
+
+// setStatusClass updates the CSS class on the status menu item.
+func (t *TrayManager) setStatusClass(class string) {
+	ctx, _ := t.mStatus.GetStyleContext()
+	ctx.RemoveClass("status-running")
+	ctx.RemoveClass("status-stopped")
+	ctx.RemoveClass("status-transition")
+	ctx.AddClass(class)
+}
 ```
+
+**Note:** Add `"github.com/gotk3/gotk3/gdk"` to the imports at the top of tray.go.
 
 - [ ] **Step 2: Verify it builds**
 
@@ -949,6 +1027,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/gotk3/gotk3/gdk"
 	"github.com/gotk3/gotk3/glib"
 	"github.com/gotk3/gotk3/gtk"
 	"github.com/jacklipton/winapps_systray/pkg/container"
@@ -956,8 +1035,9 @@ import (
 
 // Dashboard is the GTK details window.
 type Dashboard struct {
-	ctrl   *container.Controller
-	window *gtk.Window
+	ctrl     *container.Controller
+	iconPath string // path to running SVG icon for header
+	window   *gtk.Window
 
 	// Labels for live updates
 	lblStatus  *gtk.Label
@@ -977,8 +1057,8 @@ type Dashboard struct {
 	uptimeID  uint
 }
 
-func NewDashboard(ctrl *container.Controller) *Dashboard {
-	return &Dashboard{ctrl: ctrl}
+func NewDashboard(ctrl *container.Controller, iconPath string) *Dashboard {
+	return &Dashboard{ctrl: ctrl, iconPath: iconPath}
 }
 
 // Show creates and shows the dashboard window. If already open, presents it.
@@ -1038,6 +1118,15 @@ func (d *Dashboard) buildHeader() *gtk.Box {
 	box.SetMarginBottom(12)
 	box.SetMarginStart(20)
 	box.SetMarginEnd(20)
+
+	// App icon
+	if d.iconPath != "" {
+		pixbuf, err := gdk.PixbufNewFromFileAtScale(d.iconPath, 32, 32, true)
+		if err == nil {
+			img, _ := gtk.ImageNewFromPixbuf(pixbuf)
+			box.PackStart(img, false, false, 0)
+		}
+	}
 
 	// Title and status
 	titleBox, _ := gtk.BoxNew(gtk.ORIENTATION_VERTICAL, 2)
@@ -1325,7 +1414,8 @@ func main() {
 	}
 
 	// Create dashboard (lazy — window created on first Show)
-	dashboard := ui.NewDashboard(ctrl)
+	dashboardIcon := filepath.Join(iconDir, "winapps-running.svg")
+	dashboard := ui.NewDashboard(ctrl, dashboardIcon)
 
 	// Set up tray
 	tm := tray.NewTrayManager(ctrl, cfg, iconMgr)
