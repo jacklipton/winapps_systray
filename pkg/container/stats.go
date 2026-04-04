@@ -16,34 +16,57 @@ type Stats struct {
 	IPAddress  string
 }
 
-type rawStats struct {
-	Name     string `json:"Name"`
-	CPUPerc  string `json:"CPUPerc"`
-	MemUsage string `json:"MemUsage"`
-	MemPerc  string `json:"MemPerc"`
-}
-
 func parseStats(data []byte) (*Stats, error) {
-	var raw rawStats
+	var raw map[string]interface{}
 	if err := json.Unmarshal(data, &raw); err != nil {
 		return nil, err
 	}
 
-	cpu, _ := strconv.ParseFloat(strings.TrimSuffix(raw.CPUPerc, "%"), 64)
-	memPct, _ := strconv.ParseFloat(strings.TrimSuffix(raw.MemPerc, "%"), 64)
-
-	// MemUsage is "4.1GiB / 16GiB" — take the first part
-	memUsage := raw.MemUsage
-	if parts := strings.SplitN(raw.MemUsage, " / ", 2); len(parts) == 2 {
-		memUsage = parts[0]
+	stats := &Stats{
+		Name: getString(raw["Name"]),
 	}
 
-	return &Stats{
-		Name:       raw.Name,
-		CPUPercent: cpu,
-		MemUsage:   memUsage,
-		MemPercent: memPct,
-	}, nil
+	// CPUPercent (Docker v24+) or CPUPerc (older Docker/Podman)
+	if val, ok := raw["CPUPercent"]; ok {
+		stats.CPUPercent = parseFloat(val)
+	} else if val, ok := raw["CPUPerc"]; ok {
+		stats.CPUPercent = parseFloat(val)
+	}
+
+	// MemPerc (older Docker/Podman) or MemPercent (Docker v24+)
+	if val, ok := raw["MemPercent"]; ok {
+		stats.MemPercent = parseFloat(val)
+	} else if val, ok := raw["MemPerc"]; ok {
+		stats.MemPercent = parseFloat(val)
+	}
+
+	// MemUsage is "4.1GiB / 16GiB" or similar
+	memUsage := getString(raw["MemUsage"])
+	if parts := strings.SplitN(memUsage, " / ", 2); len(parts) == 2 {
+		memUsage = parts[0]
+	}
+	stats.MemUsage = memUsage
+
+	return stats, nil
+}
+
+func getString(v interface{}) string {
+	if s, ok := v.(string); ok {
+		return s
+	}
+	return ""
+}
+
+func parseFloat(v interface{}) float64 {
+	switch val := v.(type) {
+	case float64:
+		return val
+	case string:
+		f, _ := strconv.ParseFloat(strings.TrimSuffix(val, "%"), 64)
+		return f
+	default:
+		return 0
+	}
 }
 
 func parseIPOutput(output string) string {
@@ -53,8 +76,16 @@ func parseIPOutput(output string) string {
 // GetStats returns live resource usage for the container.
 // Returns nil if the container is not running or stats are unavailable.
 func (c *Controller) GetStats() *Stats {
+	c.mu.Lock()
+	containerName := c.containerName
+	c.mu.Unlock()
+
+	if containerName == "" {
+		return nil
+	}
+
 	// docker/podman stats --no-stream --format json <container>
-	cmd := exec.Command(c.cfg.Engine, "stats", "--no-stream", "--format", "json", c.cfg.ContainerName)
+	cmd := exec.Command(c.cfg.Engine, "stats", "--no-stream", "--format", "json", containerName)
 	output, err := cmd.Output()
 	if err != nil || len(output) == 0 {
 		return nil
@@ -68,7 +99,7 @@ func (c *Controller) GetStats() *Stats {
 	// Get IP address via inspect
 	ipCmd := exec.Command(c.cfg.Engine, "inspect", "--format",
 		"{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}",
-		c.cfg.ContainerName)
+		containerName)
 	if ipOut, err := ipCmd.Output(); err == nil {
 		stats.IPAddress = parseIPOutput(string(ipOut))
 	}

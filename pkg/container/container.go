@@ -9,6 +9,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/jacklipton/winapps_systray/pkg/config"
 	"github.com/jacklipton/winapps_systray/pkg/discovery"
 )
 
@@ -23,13 +24,18 @@ const (
 )
 
 type Controller struct {
-	cfg        *discovery.Config
-	mu         sync.Mutex
-	transition State // non-empty while a Start/Stop is in progress
+	cfg           *discovery.Config
+	settings      *config.Settings
+	mu            sync.Mutex
+	transition    State  // non-empty while a Start/Stop is in progress
+	containerName string // dynamically discovered
 }
 
-func NewController(cfg *discovery.Config) *Controller {
-	return &Controller{cfg: cfg}
+func NewController(cfg *discovery.Config, settings *config.Settings) *Controller {
+	return &Controller{
+		cfg:      cfg,
+		settings: settings,
+	}
 }
 
 // compose builds an exec.Cmd for "engine compose -f <file> <args...>".
@@ -71,11 +77,18 @@ func (c *Controller) GetStatus() (State, error) {
 }
 
 type containerInfo struct {
-	State string `json:"State"`
+	Name    string `json:"Name"`
+	Service string `json:"Service"`
+	State   string `json:"State"`
+	Status  string `json:"Status"` // Detailed status like "Up 2 hours"
 }
 
 func (c *Controller) pollState() (State, error) {
-	cmd := c.compose("ps", "--format", "json")
+	args := []string{"ps", "--format", "json"}
+	if c.settings.PrimaryService != "" {
+		args = append(args, c.settings.PrimaryService)
+	}
+	cmd := c.compose(args...)
 	output, err := cmd.Output()
 	if err != nil {
 		return StateError, fmt.Errorf("compose ps: %w", err)
@@ -85,26 +98,49 @@ func (c *Controller) pollState() (State, error) {
 		return StateStopped, nil
 	}
 
-	// Docker Compose outputs NDJSON (one object per line), not a JSON array.
-	// Try array first for forward-compatibility, then fall back to NDJSON.
 	var containers []containerInfo
-	if err := json.Unmarshal(output, &containers); err != nil {
-		dec := json.NewDecoder(strings.NewReader(string(output)))
-		for dec.More() {
-			var info containerInfo
-			if err := dec.Decode(&info); err != nil {
-				return StateError, fmt.Errorf("parse compose output: %w", err)
+	dec := json.NewDecoder(strings.NewReader(string(output)))
+	for dec.More() {
+		var info containerInfo
+		if err := dec.Decode(&info); err != nil {
+			// Some versions output an array, some NDJSON. Try to handle both.
+			if strings.HasPrefix(strings.TrimSpace(string(output)), "[") {
+				if err := json.Unmarshal(output, &containers); err == nil {
+					break
+				}
 			}
-			containers = append(containers, info)
+			return StateError, fmt.Errorf("parse compose output: %w", err)
 		}
+		containers = append(containers, info)
 	}
 
-	for _, info := range containers {
-		if strings.EqualFold(info.State, "running") {
+	if len(containers) == 0 {
+		return StateStopped, nil
+	}
+
+	// For now, we take the first container matching the service (usually only one)
+	target := containers[0]
+	c.mu.Lock()
+	c.containerName = target.Name
+	c.mu.Unlock()
+
+	state := strings.ToLower(target.State)
+	switch {
+	case state == "running":
+		return StateRunning, nil
+	case state == "starting" || state == "restarting":
+		return StateStarting, nil
+	case state == "stopping" || state == "removing":
+		return StateStopping, nil
+	case state == "exited" || state == "created" || state == "dead":
+		return StateStopped, nil
+	default:
+		// Fallback for custom statuses
+		if strings.Contains(strings.ToLower(target.Status), "up") {
 			return StateRunning, nil
 		}
+		return StateStopped, nil
 	}
-	return StateStopped, nil
 }
 
 func (c *Controller) Start() error {

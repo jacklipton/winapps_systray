@@ -42,7 +42,7 @@ func main() {
 		log.Fatalf("Discovery failed: %v", err)
 	}
 
-	ctrl := container.NewController(discoveryCfg)
+	ctrl := container.NewController(discoveryCfg, cfg)
 
 	// Set up icons in temp directory
 	iconDir, err := os.MkdirTemp("", "winapps-icons-")
