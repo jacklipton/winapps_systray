@@ -38,8 +38,18 @@ func main() {
 
 	// Discover winapps
 	discoveryCfg, err := discovery.GetConfig()
+	isInitialSetup := false
 	if err != nil {
-		log.Fatalf("Discovery failed: %v", err)
+		log.Printf("Discovery failed: %v", err)
+		if ui.ShowSetupRequired(nil, "WinApps directory not found or engine missing.\n\nWould you like to open Settings to configure it manually?") {
+			isInitialSetup = true
+			discoveryCfg = &discovery.Config{Engine: "docker"} // Default for setup UI
+		} else {
+			return
+		}
+	} else if cfg.PrimaryService == "" {
+		// Found directory but no primary service selected
+		isInitialSetup = true
 	}
 
 	ctrl := container.NewController(discoveryCfg, cfg)
@@ -64,6 +74,11 @@ func main() {
 	tm := tray.NewTrayManager(ctrl, cfg, settingsPath, iconMgr)
 	tm.OnDashboard = func() { dashboard.Show() }
 	tm.Setup()
+
+	if isInitialSetup {
+		sw := ui.NewSettingsWindow(cfg, settingsPath, ctrl.Engine())
+		sw.Show()
+	}
 
 	// Run GTK main loop (blocks until Quit)
 	gtk.Main()
