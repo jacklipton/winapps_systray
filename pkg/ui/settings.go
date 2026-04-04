@@ -12,29 +12,30 @@ import (
 )
 
 type SettingsWindow struct {
-	window   *gtk.Window
-	settings *config.Settings
-	path     string // path to settings.json
+        window   *gtk.Window
+        settings *config.Settings
+        path     string // path to settings.json
 
-	// Widgets
-	fileChooser  *gtk.FileChooserButton
-	comboService *gtk.ComboBoxText
-	spinPoll     *gtk.SpinButton
-	chkNotify    *gtk.CheckButton
-	lblDirStatus *gtk.Label
+        // Widgets
+        fileChooser  *gtk.FileChooserButton
+        comboService *gtk.ComboBoxText
+        spinPoll     *gtk.SpinButton
+        chkNotify    *gtk.CheckButton
+        lblDirStatus *gtk.Label
 
-	engine string
-	OnSave func() // called after settings are saved, for live-reload
+        engine          string
+        composeFilePath string // full path to compose.yaml, empty if not found
+        OnSave          func() // called after settings are saved, for live-reload
 }
 
-func NewSettingsWindow(settings *config.Settings, path, engine string) *SettingsWindow {
-	return &SettingsWindow{
-		settings: settings,
-		path:     path,
-		engine:   engine,
-	}
+func NewSettingsWindow(settings *config.Settings, path, engine, composeFilePath string) *SettingsWindow {
+        return &SettingsWindow{
+                settings:        settings,
+                path:            path,
+                engine:          engine,
+                composeFilePath: composeFilePath,
+        }
 }
-
 func (s *SettingsWindow) Show() {
 	if s.window != nil {
 		s.window.Present()

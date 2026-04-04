@@ -86,10 +86,13 @@ func main() {
 	tm.Setup()
 
 	if isInitialSetup {
-		sw := ui.NewSettingsWindow(cfg, settingsPath, ctrl.Engine())
-		sw.Show()
+	        composePath := ""
+	        if discoveryCfg.ComposeFile != "" {
+	                composePath = filepath.Join(discoveryCfg.WinAppsDir, discoveryCfg.ComposeFile)
+	        }
+	        sw := ui.NewSettingsWindow(cfg, settingsPath, ctrl.Engine(), composePath)
+	        sw.Show()
 	}
-
 	// Handle signals for clean shutdown
 	sigCh := make(chan os.Signal, 1)
 	signal.Notify(sigCh, syscall.SIGINT, syscall.SIGTERM)

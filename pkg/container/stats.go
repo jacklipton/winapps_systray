@@ -107,6 +107,11 @@ func (c *Controller) GetStats() *Stats {
 	return stats
 }
 
+// WinAppsDir returns the WinApps directory path from config.
+func (c *Controller) WinAppsDir() string {
+        return c.cfg.WinAppsDir
+}
+
 // ComposeFile returns the compose file name from config.
 func (c *Controller) ComposeFile() string {
 	return c.cfg.ComposeFile

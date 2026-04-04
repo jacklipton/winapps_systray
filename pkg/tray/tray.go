@@ -1,21 +1,21 @@
 package tray
 
 import (
-	"fmt"
-	"os/exec"
-	"time"
+        "fmt"
+        "os/exec"
+        "path/filepath"
+        "time"
 
-	"github.com/gotk3/gotk3/gdk"
-	"github.com/gotk3/gotk3/glib"
-	"github.com/gotk3/gotk3/gtk"
-	"github.com/jacklipton/winapps_systray/pkg/config"
-	"github.com/jacklipton/winapps_systray/pkg/container"
-	"github.com/jacklipton/winapps_systray/pkg/icons"
-	"github.com/jacklipton/winapps_systray/pkg/indicator"
-	"github.com/jacklipton/winapps_systray/pkg/notify"
-	"github.com/jacklipton/winapps_systray/pkg/ui"
+        "github.com/gotk3/gotk3/gdk"
+        "github.com/gotk3/gotk3/glib"
+        "github.com/gotk3/gotk3/gtk"
+        "github.com/jacklipton/winapps_systray/pkg/config"
+        "github.com/jacklipton/winapps_systray/pkg/container"
+        "github.com/jacklipton/winapps_systray/pkg/icons"
+        "github.com/jacklipton/winapps_systray/pkg/indicator"
+        "github.com/jacklipton/winapps_systray/pkg/notify"
+        "github.com/jacklipton/winapps_systray/pkg/ui"
 )
-
 // OnDashboard is called when the user clicks "Details...".
 // Set by main before calling Setup.
 type OnDashboardFunc func()
@@ -103,11 +103,11 @@ func (t *TrayManager) Setup() {
 	})
 
 	t.mSettings = addMenuItem(menu, "Settings...", func() {
-		sw := ui.NewSettingsWindow(t.cfg, t.settingsPath, t.ctrl.Engine())
-		sw.OnSave = func() { t.restartPollTimer() }
-		sw.Show()
+	        composePath := filepath.Join(t.ctrl.WinAppsDir(), t.ctrl.ComposeFile())
+	        sw := ui.NewSettingsWindow(t.cfg, t.settingsPath, t.ctrl.Engine(), composePath)
+	        sw.OnSave = func() { t.restartPollTimer() }
+	        sw.Show()
 	})
-
 	addMenuItem(menu, "Quit", func() { gtk.MainQuit() })
 
 	menu.ShowAll()
