@@ -1,5 +1,5 @@
 name: winapps-systray
-arch: amd64
+arch: ${GOARCH}
 version: 0.1.0
 release: 1
 maintainer: Jack Lipton
