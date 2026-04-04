@@ -92,6 +92,76 @@ func Load(path, service string) (*VMConfig, error) {
         return cfg, nil
 }
 
+// Save backs up the compose file to <path>.bak, then updates the
+// environment variables for the specified service and writes the
+// modified YAML back, preserving comments and structure.
+// Only keys that already exist in the file are updated.
+func Save(path, service string, cfg *VMConfig) error {
+        // Read original file
+        data, err := os.ReadFile(path)
+        if err != nil {
+                return fmt.Errorf("read compose file: %w", err)
+        }
+
+        // Create backup
+        bakPath := path + ".bak"
+        if err := os.WriteFile(bakPath, data, 0644); err != nil {
+                return fmt.Errorf("create backup: %w", err)
+        }
+
+        // Parse into node tree
+        var doc yaml.Node
+        if err := yaml.Unmarshal(data, &doc); err != nil {
+                return fmt.Errorf("parse compose file: %w", err)
+        }
+
+        envNode, err := findEnvNode(&doc, service)
+        if err != nil {
+                return err
+        }
+
+        // Build desired values map
+        desired := map[string]string{
+                "RAM_SIZE":  cfg.RAMSize,
+                "CPU_CORES": cfg.CPUCores,
+                "DISK_SIZE": cfg.DiskSize,
+                "VERSION":   cfg.Version,
+                "USERNAME":  cfg.Username,
+                "PASSWORD":  cfg.Password,
+        }
+
+        // Update only existing keys in the environment node
+        updateMappingNode(envNode, desired)
+
+        // Write back
+        f, err := os.Create(path)
+        if err != nil {
+                return fmt.Errorf("open compose file for writing: %w", err)
+        }
+        defer f.Close()
+
+        enc := yaml.NewEncoder(f)
+        enc.SetIndent(2)
+        if err := enc.Encode(&doc); err != nil {
+                return fmt.Errorf("write compose file: %w", err)
+        }
+        return enc.Close()
+}
+
+// updateMappingNode updates values in a YAML mapping node for keys
+// that already exist. Keys not present in the mapping are skipped.
+func updateMappingNode(node *yaml.Node, desired map[string]string) {
+        if node.Kind != yaml.MappingNode {
+                return
+        }
+        for i := 0; i < len(node.Content)-1; i += 2 {
+                key := node.Content[i].Value
+                if val, ok := desired[key]; ok {
+                        node.Content[i+1].Value = val
+                }
+        }
+}
+
 // findEnvNode walks the YAML node tree to find
 // services.<service>.environment and returns that mapping node.
 func findEnvNode(doc *yaml.Node, service string) (*yaml.Node, error) {
