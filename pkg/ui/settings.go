@@ -155,7 +155,7 @@ func (s *SettingsWindow) onSave() {
 		return
 	}
 
-	msg := gtk.MessageDialogNew(s.window, gtk.DIALOG_MODAL, gtk.MESSAGE_INFO, gtk.BUTTONS_OK, "Settings saved. Please restart the application to apply all changes.")
+	msg := gtk.MessageDialogNew(s.window, gtk.DIALOG_MODAL, gtk.MESSAGE_INFO, gtk.BUTTONS_OK, "%s", "Settings saved. Please restart the application to apply all changes.")
 	msg.Run()
 	msg.Destroy()
 	s.window.Close()

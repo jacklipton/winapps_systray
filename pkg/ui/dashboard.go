@@ -22,6 +22,7 @@ type Dashboard struct {
 	lblMemory  *gtk.Label
 	lblCPU     *gtk.Label
 	lblName    *gtk.Label
+	lblService *gtk.Label
 	lblEngine  *gtk.Label
 	lblIP      *gtk.Label
 	lblCompose *gtk.Label
@@ -144,8 +145,9 @@ func (d *Dashboard) buildStatsGrid() *gtk.Grid {
 
 	d.lblMemory = d.addStatCell(grid, "MEMORY", "—", 0, 0)
 	d.lblCPU = d.addStatCell(grid, "CPU", "—", 1, 0)
-	d.lblName = d.addStatCell(grid, "CONTAINER", "—", 0, 1)
-	d.lblEngine = d.addStatCell(grid, "ENGINE", "—", 1, 1)
+	d.lblService = d.addStatCell(grid, "SERVICE", "—", 0, 1)
+	d.lblName = d.addStatCell(grid, "CONTAINER", "—", 1, 1)
+	d.lblEngine = d.addStatCell(grid, "ENGINE", "—", 0, 2)
 
 	return grid
 }
@@ -280,6 +282,7 @@ func (d *Dashboard) refresh() {
 		}
 
 		d.lblEngine.SetText(engine)
+		d.lblService.SetText(d.ctrl.PrimaryService())
 		d.lblCompose.SetText(compose)
 	})
 }

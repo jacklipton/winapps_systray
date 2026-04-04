@@ -121,3 +121,11 @@ func (c *Controller) Engine() string {
 func (c *Controller) ContainerName() string {
 	return c.cfg.ContainerName
 }
+
+// PrimaryService returns the primary service name from settings.
+func (c *Controller) PrimaryService() string {
+	if c.settings.PrimaryService != "" {
+		return c.settings.PrimaryService
+	}
+	return "WinApps (auto)"
+}
