@@ -7,8 +7,10 @@ Start/stop your Windows VM with a single click and free up 4GB+ of RAM when you'
 ## Features
 
 - **One-click toggle** to start and stop your WinApps container
-- **Status icons** — green (running), grey (stopped), yellow (transitioning)
-- **Force kill** option if the container hangs during shutdown
+- **Animated tray icons** — smooth transitions during startup/shutdown
+- **Information-dense menu** — live uptime, memory usage, and engine status
+- **GTK Dashboard** — detailed resource stats and network info
+- **Desktop notifications** — configurable alerts for state changes
 - **Auto-discovery** of your winapps directory
 - **Docker and Podman** support
 - **Autostart** with your desktop session
@@ -100,8 +102,12 @@ make user-uninstall
 
 - `pkg/discovery` — finds the winapps directory and detects docker/podman
 - `pkg/container` — wraps compose commands and tracks container state
-- `pkg/tray` — system tray UI and event loop
-- `assets` — embedded tray icons
+- `pkg/config` — user settings and defaults
+- `pkg/notify` — desktop notifications via notify-send
+- `pkg/icons` — SVG generation and animation management
+- `pkg/indicator` — CGo wrapper for libayatana-appindicator
+- `pkg/tray` — GTK system tray UI and event loop
+- `pkg/ui` — GTK dashboard window
 
 ## License
 

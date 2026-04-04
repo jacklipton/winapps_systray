@@ -10,6 +10,7 @@ homepage: https://github.com/jacklipton/winapps_systray
 depends:
   - gtk3
   - libayatana-appindicator-gtk3
+  - libnotify
 
 rpm:
   group: System Environment/Base
