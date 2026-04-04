@@ -37,89 +37,115 @@ func NewSettingsWindow(settings *config.Settings, path, engine, composeFilePath 
         }
 }
 func (s *SettingsWindow) Show() {
-	if s.window != nil {
-		s.window.Present()
-		return
-	}
+        if s.window != nil {
+                s.window.Present()
+                return
+        }
 
-	win, _ := gtk.WindowNew(gtk.WINDOW_TOPLEVEL)
-	win.SetTitle("WinApps Settings")
-	win.SetDefaultSize(400, 300)
-	win.SetResizable(false)
-	win.SetPosition(gtk.WIN_POS_CENTER)
-	win.Connect("destroy", func() { s.window = nil })
-	s.window = win
+        win, _ := gtk.WindowNew(gtk.WINDOW_TOPLEVEL)
+        win.SetTitle("WinApps Settings")
+        win.SetDefaultSize(420, 380)
+        win.SetResizable(false)
+        win.SetPosition(gtk.WIN_POS_CENTER)
+        win.Connect("destroy", func() { s.window = nil })
+        s.window = win
 
-	mainBox, _ := gtk.BoxNew(gtk.ORIENTATION_VERTICAL, 12)
-	mainBox.SetMarginStart(18)
-	mainBox.SetMarginEnd(18)
-	mainBox.SetMarginTop(18)
-	mainBox.SetMarginBottom(18)
+        notebook, _ := gtk.NotebookNew()
 
-	// --- WinApps Directory ---
-	dirBox, _ := gtk.BoxNew(gtk.ORIENTATION_VERTICAL, 4)
-	lblDir, _ := gtk.LabelNew("WinApps Directory")
-	lblDir.SetHAlign(gtk.ALIGN_START)
-	dirBox.PackStart(lblDir, false, false, 0)
+        // Tab 1: App Settings
+        appTab := s.buildAppSettingsTab()
+        appLabel, _ := gtk.LabelNew("App Settings")
+        notebook.AppendPage(appTab, appLabel)
 
-	s.fileChooser, _ = gtk.FileChooserButtonNew("Select WinApps Directory", gtk.FILE_CHOOSER_ACTION_SELECT_FOLDER)
-	if s.settings.WinAppsDir != "" {
-		s.fileChooser.SetFilename(s.settings.WinAppsDir)
-	}
-	s.fileChooser.Connect("file-set", s.onDirChanged)
-	dirBox.PackStart(s.fileChooser, false, false, 0)
+        // Tab 2: VM Configuration
+        vmTab := s.buildVMConfigTab()
+        vmLabel, _ := gtk.LabelNew("VM Configuration")
+        notebook.AppendPage(vmTab, vmLabel)
 
-	s.lblDirStatus, _ = gtk.LabelNew("")
-	s.lblDirStatus.SetHAlign(gtk.ALIGN_START)
-	dirBox.PackStart(s.lblDirStatus, false, false, 0)
-	s.validateDir()
-
-	mainBox.PackStart(dirBox, false, false, 0)
-
-	// --- Primary Service ---
-	svcBox, _ := gtk.BoxNew(gtk.ORIENTATION_VERTICAL, 4)
-	lblSvc, _ := gtk.LabelNew("Primary Service")
-	lblSvc.SetHAlign(gtk.ALIGN_START)
-	svcBox.PackStart(lblSvc, false, false, 0)
-
-	s.comboService, _ = gtk.ComboBoxTextNew()
-	s.updateServices()
-	svcBox.PackStart(s.comboService, false, false, 0)
-	mainBox.PackStart(svcBox, false, false, 0)
-
-	// --- Other Settings ---
-	grid, _ := gtk.GridNew()
-	grid.SetColumnSpacing(12)
-	grid.SetRowSpacing(12)
-
-	// Poll Interval
-	lblPoll, _ := gtk.LabelNew("Poll Interval (sec)")
-	lblPoll.SetHAlign(gtk.ALIGN_START)
-	grid.Attach(lblPoll, 0, 0, 1, 1)
-
-	adj, _ := gtk.AdjustmentNew(float64(s.settings.PollIntervalSeconds), 1, 60, 1, 5, 0)
-	s.spinPoll, _ = gtk.SpinButtonNew(adj, 1, 0)
-	grid.Attach(s.spinPoll, 1, 0, 1, 1)
-
-	// Notifications
-	s.chkNotify, _ = gtk.CheckButtonNewWithLabel("Enable Desktop Notifications")
-	s.chkNotify.SetActive(s.settings.Notifications)
-	grid.Attach(s.chkNotify, 0, 1, 2, 1)
-
-	mainBox.PackStart(grid, false, false, 0)
-
-	// --- Save Button ---
-	btnBox, _ := gtk.BoxNew(gtk.ORIENTATION_HORIZONTAL, 0)
-	btnSave, _ := gtk.ButtonNewWithLabel("Save Settings")
-	btnSave.SetHAlign(gtk.ALIGN_END)
-	btnSave.Connect("clicked", s.onSave)
-	btnBox.PackEnd(btnSave, false, false, 0)
-	mainBox.PackEnd(btnBox, false, false, 0)
-
-	win.Add(mainBox)
-	win.ShowAll()
+        win.Add(notebook)
+        win.ShowAll()
 }
 
+func (s *SettingsWindow) buildAppSettingsTab() *gtk.Box {
+        mainBox, _ := gtk.BoxNew(gtk.ORIENTATION_VERTICAL, 12)
+        mainBox.SetMarginStart(18)
+        mainBox.SetMarginEnd(18)
+        mainBox.SetMarginTop(18)
+        mainBox.SetMarginBottom(18)
+
+        // --- WinApps Directory ---
+        dirBox, _ := gtk.BoxNew(gtk.ORIENTATION_VERTICAL, 4)
+        lblDir, _ := gtk.LabelNew("WinApps Directory")
+        lblDir.SetHAlign(gtk.ALIGN_START)
+        dirBox.PackStart(lblDir, false, false, 0)
+
+        s.fileChooser, _ = gtk.FileChooserButtonNew("Select WinApps Directory", gtk.FILE_CHOOSER_ACTION_SELECT_FOLDER)
+        if s.settings.WinAppsDir != "" {
+                s.fileChooser.SetFilename(s.settings.WinAppsDir)
+        }
+        s.fileChooser.Connect("file-set", s.onDirChanged)
+        dirBox.PackStart(s.fileChooser, false, false, 0)
+
+        s.lblDirStatus, _ = gtk.LabelNew("")
+        s.lblDirStatus.SetHAlign(gtk.ALIGN_START)
+        dirBox.PackStart(s.lblDirStatus, false, false, 0)
+        s.validateDir()
+
+        mainBox.PackStart(dirBox, false, false, 0)
+
+        // --- Primary Service ---
+        svcBox, _ := gtk.BoxNew(gtk.ORIENTATION_VERTICAL, 4)
+        lblSvc, _ := gtk.LabelNew("Primary Service")
+        lblSvc.SetHAlign(gtk.ALIGN_START)
+        svcBox.PackStart(lblSvc, false, false, 0)
+
+        s.comboService, _ = gtk.ComboBoxTextNew()
+        s.updateServices()
+        svcBox.PackStart(s.comboService, false, false, 0)
+        mainBox.PackStart(svcBox, false, false, 0)
+
+        // --- Other Settings ---
+        grid, _ := gtk.GridNew()
+        grid.SetColumnSpacing(12)
+        grid.SetRowSpacing(12)
+
+        lblPoll, _ := gtk.LabelNew("Poll Interval (sec)")
+        lblPoll.SetHAlign(gtk.ALIGN_START)
+        grid.Attach(lblPoll, 0, 0, 1, 1)
+
+        adj, _ := gtk.AdjustmentNew(float64(s.settings.PollIntervalSeconds), 1, 60, 1, 5, 0)
+        s.spinPoll, _ = gtk.SpinButtonNew(adj, 1, 0)
+        grid.Attach(s.spinPoll, 1, 0, 1, 1)
+
+        s.chkNotify, _ = gtk.CheckButtonNewWithLabel("Enable Desktop Notifications")
+        s.chkNotify.SetActive(s.settings.Notifications)
+        grid.Attach(s.chkNotify, 0, 1, 2, 1)
+
+        mainBox.PackStart(grid, false, false, 0)
+
+        // --- Save Button ---
+        btnBox, _ := gtk.BoxNew(gtk.ORIENTATION_HORIZONTAL, 0)
+        btnSave, _ := gtk.ButtonNewWithLabel("Save Settings")
+        btnSave.SetHAlign(gtk.ALIGN_END)
+        btnSave.Connect("clicked", s.onSave)
+        btnBox.PackEnd(btnSave, false, false, 0)
+        mainBox.PackEnd(btnBox, false, false, 0)
+
+        return mainBox
+}
+
+func (s *SettingsWindow) buildVMConfigTab() *gtk.Box {
+        box, _ := gtk.BoxNew(gtk.ORIENTATION_VERTICAL, 12)
+        box.SetMarginStart(18)
+        box.SetMarginEnd(18)
+        box.SetMarginTop(18)
+        box.SetMarginBottom(18)
+
+        lbl, _ := gtk.LabelNew("VM Configuration — coming soon")
+        box.PackStart(lbl, false, false, 0)
+
+        return box
+}
 func (s *SettingsWindow) onDirChanged() {
 	newDir := s.fileChooser.GetFilename()
 	s.settings.WinAppsDir = newDir
