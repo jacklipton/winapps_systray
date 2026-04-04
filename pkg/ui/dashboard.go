@@ -78,7 +78,7 @@ func (d *Dashboard) Show() {
 
 	// Start live updates
 	d.timerID = glib.TimeoutAdd(2500, func() bool {
-		d.refresh()
+		go d.refresh()
 		return true
 	})
 	d.uptimeID = glib.TimeoutAdd(1000, func() bool {
@@ -86,7 +86,7 @@ func (d *Dashboard) Show() {
 		return true
 	})
 
-	d.refresh()
+	go d.refresh()
 }
 
 func (d *Dashboard) buildHeader() *gtk.Box {
@@ -231,51 +231,68 @@ func (d *Dashboard) buildActions() *gtk.Box {
 
 func (d *Dashboard) refresh() {
 	status, _ := d.ctrl.GetStatus()
-
-	switch status {
-	case container.StateRunning:
-		d.lblStatus.SetText("● Running")
-		d.btnToggle.SetLabel("Stop")
-		d.btnToggle.SetSensitive(true)
-		d.btnKill.SetSensitive(false)
-
-		if stats := d.ctrl.GetStats(); stats != nil {
-			d.lblMemory.SetText(stats.MemUsage)
-			d.lblCPU.SetText(fmt.Sprintf("%.1f%%", stats.CPUPercent))
-			d.lblName.SetText(stats.Name)
-			d.lblIP.SetText(stats.IPAddress)
-		}
-
-	case container.StateStopped:
-		d.lblStatus.SetText("● Stopped")
-		d.lblUptime.SetText("—")
-		d.lblMemory.SetText("—")
-		d.lblCPU.SetText("—")
-		d.lblIP.SetText("—")
-		d.btnToggle.SetLabel("Start")
-		d.btnToggle.SetSensitive(true)
-		d.btnKill.SetSensitive(false)
-
-	case container.StateStarting:
-		d.lblStatus.SetText("● Starting...")
-		d.btnToggle.SetSensitive(false)
-		d.btnKill.SetSensitive(false)
-
-	case container.StateStopping:
-		d.lblStatus.SetText("● Stopping...")
-		d.btnToggle.SetSensitive(false)
-		d.btnKill.SetSensitive(true)
+	var stats *container.Stats
+	if status == container.StateRunning {
+		stats = d.ctrl.GetStats()
 	}
 
-	d.lblEngine.SetText(d.ctrl.Engine())
-	d.lblCompose.SetText(d.ctrl.ComposeFile())
+	engine := d.ctrl.Engine()
+	compose := d.ctrl.ComposeFile()
+
+	glib.IdleAdd(func() {
+		if d.window == nil {
+			return
+		}
+
+		switch status {
+		case container.StateRunning:
+			d.lblStatus.SetText("● Running")
+			d.btnToggle.SetLabel("Stop")
+			d.btnToggle.SetSensitive(true)
+			d.btnKill.SetSensitive(false)
+
+			if stats != nil {
+				d.lblMemory.SetText(stats.MemUsage)
+				d.lblCPU.SetText(fmt.Sprintf("%.1f%%", stats.CPUPercent))
+				d.lblName.SetText(stats.Name)
+				d.lblIP.SetText(stats.IPAddress)
+			}
+
+		case container.StateStopped:
+			d.lblStatus.SetText("● Stopped")
+			d.lblUptime.SetText("—")
+			d.lblMemory.SetText("—")
+			d.lblCPU.SetText("—")
+			d.lblIP.SetText("—")
+			d.btnToggle.SetLabel("Start")
+			d.btnToggle.SetSensitive(true)
+			d.btnKill.SetSensitive(false)
+
+		case container.StateStarting:
+			d.lblStatus.SetText("● Starting...")
+			d.btnToggle.SetSensitive(false)
+			d.btnKill.SetSensitive(false)
+
+		case container.StateStopping:
+			d.lblStatus.SetText("● Stopping...")
+			d.btnToggle.SetSensitive(false)
+			d.btnKill.SetSensitive(true)
+		}
+
+		d.lblEngine.SetText(engine)
+		d.lblCompose.SetText(compose)
+	})
 }
 
 func (d *Dashboard) updateUptime() {
 	status, _ := d.ctrl.GetStatus()
 	if status == container.StateRunning && !d.startedAt.IsZero() {
 		elapsed := time.Since(d.startedAt)
-		d.lblUptime.SetText(formatDuration(elapsed))
+		glib.IdleAdd(func() {
+			if d.window != nil {
+				d.lblUptime.SetText(formatDuration(elapsed))
+			}
+		})
 	}
 }
 

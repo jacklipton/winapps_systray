@@ -57,7 +57,7 @@ func (t *TrayManager) Setup() {
 	menu, _ := gtk.MenuNew()
 
 	// Refresh stats every time the menu is shown
-	menu.Connect("show", func() { t.pollAndUpdate() })
+	menu.Connect("show", func() { go t.pollAndUpdate() })
 
 	t.mStatus = addMenuItem(menu, "WinApps — Unknown", nil)
 	t.mStatus.SetSensitive(false)
@@ -94,7 +94,7 @@ func (t *TrayManager) Setup() {
 
 	// Start status polling via GTK timer
 	glib.TimeoutAdd(uint(t.cfg.PollIntervalSeconds*1000), func() bool {
-		t.pollAndUpdate()
+		go t.pollAndUpdate()
 		return true
 	})
 }
@@ -105,22 +105,29 @@ func (t *TrayManager) pollAndUpdate() {
 		return
 	}
 
-	prev := t.lastState
-	t.lastState = status
-	t.updateUI(status)
-
-	// Send notifications on state transitions
-	if t.cfg.Notifications && prev != "" && prev != status {
-		t.notifyTransition(prev, status)
+	var stats *container.Stats
+	if status == container.StateRunning {
+		stats = t.ctrl.GetStats()
 	}
 
-	// Track uptime start
-	if status == container.StateRunning && prev != container.StateRunning {
-		t.startedAt = time.Now()
-	}
+	glib.IdleAdd(func() {
+		prev := t.lastState
+		t.lastState = status
+		t.updateUI(status, stats)
+
+		// Send notifications on state transitions
+		if t.cfg.Notifications && prev != "" && prev != status {
+			t.notifyTransition(prev, status)
+		}
+
+		// Track uptime start
+		if status == container.StateRunning && prev != container.StateRunning {
+			t.startedAt = time.Now()
+		}
+	})
 }
 
-func (t *TrayManager) updateUI(state container.State) {
+func (t *TrayManager) updateUI(state container.State, stats *container.Stats) {
 	// Stop any running animation
 	t.stopAnimation()
 
@@ -135,7 +142,7 @@ func (t *TrayManager) updateUI(state container.State) {
 		t.mDetails.SetSensitive(true)
 
 		// Update stats
-		if stats := t.ctrl.GetStats(); stats != nil {
+		if stats != nil {
 			elapsed := time.Since(t.startedAt)
 			t.mUptime.SetLabel(fmt.Sprintf("Uptime        %s", formatDuration(elapsed)))
 			t.mMemory.SetLabel(fmt.Sprintf("Memory        %s", stats.MemUsage))
@@ -193,7 +200,7 @@ func (t *TrayManager) onToggle() {
 	stoppedIcon := t.iconMgr.Dir() + "/winapps-stopped.svg"
 
 	if status == container.StateRunning {
-		glib.IdleAdd(func() bool { t.updateUI(container.StateStopping); return false })
+		glib.IdleAdd(func() bool { t.updateUI(container.StateStopping, nil); return false })
 		if err := t.ctrl.Stop(); err != nil && t.cfg.Notifications {
 			notify.Send("WinApps", fmt.Sprintf("Failed to stop Windows VM: %v", err), stoppedIcon)
 			return
@@ -202,7 +209,7 @@ func (t *TrayManager) onToggle() {
 			notify.Send("WinApps", "Windows VM is taking longer than expected to stop", stoppedIcon)
 		}
 	} else if status == container.StateStopped {
-		glib.IdleAdd(func() bool { t.updateUI(container.StateStarting); return false })
+		glib.IdleAdd(func() bool { t.updateUI(container.StateStarting, nil); return false })
 		if err := t.ctrl.Start(); err != nil && t.cfg.Notifications {
 			notify.Send("WinApps", fmt.Sprintf("Failed to start Windows VM: %v", err), iconPath)
 			return
