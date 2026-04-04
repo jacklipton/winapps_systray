@@ -127,5 +127,10 @@ func (c *Controller) PrimaryService() string {
 	if c.settings.PrimaryService != "" {
 		return c.settings.PrimaryService
 	}
-	return "WinApps (auto)"
+	return "windows"
+}
+
+// RDPUser returns the RDP username from winapps.conf, if available.
+func (c *Controller) RDPUser() string {
+	return c.cfg.RDPUser
 }

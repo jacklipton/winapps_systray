@@ -155,15 +155,22 @@ func (s *SettingsWindow) updateServices() {
 	}
 
 	activeIdx := -1
+	windowsIdx := -1
 	for i, svc := range services {
 		s.comboService.AppendText(svc)
 		if svc == s.settings.PrimaryService {
 			activeIdx = i
 		}
+		if svc == "windows" {
+			windowsIdx = i
+		}
 	}
 
 	if activeIdx != -1 {
 		s.comboService.SetActive(activeIdx)
+	} else if windowsIdx != -1 {
+		// Auto-select "windows" — the standard winapps service name
+		s.comboService.SetActive(windowsIdx)
 	} else if len(services) > 0 {
 		s.comboService.SetActive(0)
 	}

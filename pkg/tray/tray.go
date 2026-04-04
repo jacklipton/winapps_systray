@@ -2,6 +2,7 @@ package tray
 
 import (
 	"fmt"
+	"os/exec"
 	"time"
 
 	"github.com/gotk3/gotk3/gdk"
@@ -27,13 +28,15 @@ type TrayManager struct {
 	ind          *indicator.Indicator
 
 	// Menu items (need references for dynamic updates)
-	mStatus  *gtk.MenuItem
-	mUptime  *gtk.MenuItem
-	mMemory  *gtk.MenuItem
-	mEngine  *gtk.MenuItem
-	mToggle  *gtk.MenuItem
-	mKill    *gtk.MenuItem
-	mDetails *gtk.MenuItem
+	mStatus   *gtk.MenuItem
+	mUptime   *gtk.MenuItem
+	mMemory   *gtk.MenuItem
+	mEngine   *gtk.MenuItem
+	mToggle   *gtk.MenuItem
+	mPause    *gtk.MenuItem
+	mRestart  *gtk.MenuItem
+	mKill     *gtk.MenuItem
+	mDetails  *gtk.MenuItem
 	mSettings *gtk.MenuItem
 
 	lastState container.State
@@ -80,6 +83,10 @@ func (t *TrayManager) Setup() {
 	addSeparator(menu)
 
 	t.mToggle = addMenuItem(menu, "Start Windows", func() { go t.onToggle() })
+	t.mPause = addMenuItem(menu, "Pause", func() { go t.onPauseToggle() })
+	t.mPause.SetSensitive(false)
+	t.mRestart = addMenuItem(menu, "Restart", func() { go t.onRestart() })
+	t.mRestart.SetSensitive(false)
 	t.mKill = addMenuItem(menu, "Force Kill", func() { go t.ctrl.Kill() })
 	t.mKill.SetSensitive(false)
 
@@ -89,6 +96,10 @@ func (t *TrayManager) Setup() {
 		if t.OnDashboard != nil {
 			t.OnDashboard()
 		}
+	})
+
+	addMenuItem(menu, "Open VNC Setup...", func() {
+		exec.Command("xdg-open", "http://127.0.0.1:8006").Start()
 	})
 
 	t.mSettings = addMenuItem(menu, "Settings...", func() {
@@ -165,6 +176,9 @@ func (t *TrayManager) updateUI(state container.State, stats *container.Stats) {
 		t.setStatusClass("status-running")
 		t.mToggle.SetLabel("Stop Windows")
 		t.mToggle.SetSensitive(true)
+		t.mPause.SetLabel("Pause")
+		t.mPause.SetSensitive(true)
+		t.mRestart.SetSensitive(true)
 		t.mKill.SetSensitive(false)
 		t.mDetails.SetSensitive(true)
 
@@ -175,12 +189,31 @@ func (t *TrayManager) updateUI(state container.State, stats *container.Stats) {
 			t.mMemory.SetLabel(fmt.Sprintf("Memory        %s", stats.MemUsage))
 		}
 
+	case container.StatePaused:
+		t.ind.SetIcon(t.iconMgr.StoppedName())
+		t.mStatus.SetLabel("● WinApps — Paused")
+		t.setStatusClass("status-transition")
+		t.mToggle.SetLabel("Stop Windows")
+		t.mToggle.SetSensitive(true)
+		t.mPause.SetLabel("Resume")
+		t.mPause.SetSensitive(true)
+		t.mRestart.SetSensitive(false)
+		t.mKill.SetSensitive(true)
+		t.mDetails.SetSensitive(true)
+
+		if !t.startedAt.IsZero() {
+			elapsed := time.Since(t.startedAt)
+			t.mUptime.SetLabel(fmt.Sprintf("Uptime        %s (paused)", formatDuration(elapsed)))
+		}
+
 	case container.StateStopped:
 		t.ind.SetIcon(t.iconMgr.StoppedName())
 		t.mStatus.SetLabel("● WinApps — Stopped")
 		t.setStatusClass("status-stopped")
 		t.mToggle.SetLabel("Start Windows")
 		t.mToggle.SetSensitive(true)
+		t.mPause.SetSensitive(false)
+		t.mRestart.SetSensitive(false)
 		t.mKill.SetSensitive(false)
 		t.mDetails.SetSensitive(false)
 		t.mUptime.SetLabel("Uptime        —")
@@ -191,6 +224,8 @@ func (t *TrayManager) updateUI(state container.State, stats *container.Stats) {
 		t.setStatusClass("status-transition")
 		t.mToggle.SetLabel("Starting...")
 		t.mToggle.SetSensitive(false)
+		t.mPause.SetSensitive(false)
+		t.mRestart.SetSensitive(false)
 		t.mKill.SetSensitive(false)
 		t.mDetails.SetSensitive(false)
 		t.startAnimation(t.iconMgr.StartingFrames())
@@ -200,6 +235,8 @@ func (t *TrayManager) updateUI(state container.State, stats *container.Stats) {
 		t.setStatusClass("status-transition")
 		t.mToggle.SetLabel("Stopping...")
 		t.mToggle.SetSensitive(false)
+		t.mPause.SetSensitive(false)
+		t.mRestart.SetSensitive(false)
 		t.mKill.SetSensitive(true)
 		t.startAnimation(t.iconMgr.StoppingFrames())
 	}
@@ -226,7 +263,7 @@ func (t *TrayManager) onToggle() {
 	iconPath := t.iconMgr.Dir() + "/winapps-running.svg"
 	stoppedIcon := t.iconMgr.Dir() + "/winapps-stopped.svg"
 
-	if status == container.StateRunning {
+	if status == container.StateRunning || status == container.StatePaused {
 		glib.IdleAdd(func() bool { t.updateUI(container.StateStopping, nil); return false })
 		if err := t.ctrl.Stop(); err != nil && t.cfg.Notifications {
 			notify.Send("WinApps", fmt.Sprintf("Failed to stop Windows VM: %v", err), stoppedIcon)
@@ -247,19 +284,49 @@ func (t *TrayManager) onToggle() {
 	}
 }
 
+func (t *TrayManager) onPauseToggle() {
+	status, _ := t.ctrl.GetStatus()
+	iconPath := t.iconMgr.Dir() + "/winapps-running.svg"
+
+	if status == container.StateRunning {
+		if err := t.ctrl.Pause(); err != nil && t.cfg.Notifications {
+			notify.Send("WinApps", fmt.Sprintf("Failed to pause Windows VM: %v", err), iconPath)
+		}
+	} else if status == container.StatePaused {
+		if err := t.ctrl.Unpause(); err != nil && t.cfg.Notifications {
+			notify.Send("WinApps", fmt.Sprintf("Failed to resume Windows VM: %v", err), iconPath)
+		}
+	}
+}
+
+func (t *TrayManager) onRestart() {
+	iconPath := t.iconMgr.Dir() + "/winapps-running.svg"
+	glib.IdleAdd(func() bool { t.updateUI(container.StateStarting, nil); return false })
+	if err := t.ctrl.Restart(); err != nil && t.cfg.Notifications {
+		notify.Send("WinApps", fmt.Sprintf("Failed to restart Windows VM: %v", err), iconPath)
+		return
+	}
+	if err := t.ctrl.WaitUntilState(container.StateRunning, time.Duration(t.cfg.StartTimeoutSeconds)*time.Second); err != nil && t.cfg.Notifications {
+		notify.Send("WinApps", "Windows VM is taking longer than expected to restart", iconPath)
+	}
+}
+
 func (t *TrayManager) notifyTransition(prev, curr container.State) {
-	iconPath := ""
 	running := t.iconMgr.Dir() + "/winapps-running.svg"
 	stopped := t.iconMgr.Dir() + "/winapps-stopped.svg"
 
 	switch curr {
 	case container.StateRunning:
-		iconPath = running
-		notify.Send("WinApps", "Windows VM is now running", iconPath)
+		if prev == container.StatePaused {
+			notify.Send("WinApps", "Windows VM has been resumed", running)
+		} else {
+			notify.Send("WinApps", "Windows VM is now running", running)
+		}
+	case container.StatePaused:
+		notify.Send("WinApps", "Windows VM has been paused", stopped)
 	case container.StateStopped:
-		if prev == container.StateRunning || prev == container.StateStopping {
-			iconPath = stopped
-			notify.Send("WinApps", "Windows VM has stopped", iconPath)
+		if prev == container.StateRunning || prev == container.StateStopping || prev == container.StatePaused {
+			notify.Send("WinApps", "Windows VM has stopped", stopped)
 		}
 	}
 }

@@ -19,6 +19,7 @@ type State string
 const (
 	StateStopped  State = "Stopped"
 	StateRunning  State = "Running"
+	StatePaused   State = "Paused"
 	StateStarting State = "Starting"
 	StateStopping State = "Stopping"
 	StateError    State = "Error"
@@ -146,6 +147,8 @@ func (c *Controller) pollState() (State, error) {
 	switch {
 	case state == "running":
 		return StateRunning, nil
+	case state == "paused":
+		return StatePaused, nil
 	case state == "starting" || state == "restarting":
 		return StateStarting, nil
 	case state == "stopping" || state == "removing":
@@ -189,6 +192,29 @@ func (c *Controller) Stop() error {
 		c.mu.Unlock()
 	}
 	return err
+}
+
+func (c *Controller) Restart() error {
+	c.mu.Lock()
+	c.transition = StateStarting
+	c.transitionAt = time.Now()
+	c.mu.Unlock()
+
+	err := c.compose("restart").Run()
+	if err != nil {
+		c.mu.Lock()
+		c.transition = ""
+		c.mu.Unlock()
+	}
+	return err
+}
+
+func (c *Controller) Pause() error {
+	return c.compose("pause").Run()
+}
+
+func (c *Controller) Unpause() error {
+	return c.compose("unpause").Run()
 }
 
 func (c *Controller) Kill() error {

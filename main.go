@@ -59,9 +59,6 @@ func main() {
 		} else {
 			return
 		}
-	} else if cfg.PrimaryService == "" {
-		// Found directory but no primary service selected
-		isInitialSetup = true
 	}
 
 	ctrl := container.NewController(discoveryCfg, cfg)

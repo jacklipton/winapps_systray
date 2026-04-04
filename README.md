@@ -62,9 +62,10 @@ The app auto-discovers your winapps directory by checking these locations in ord
 
 1. `WINAPPS_DIR` environment variable
 2. `~/.config/winapps-systray/config` (a file containing the path)
-3. `~/winapps`
-4. `~/.winapps`
-5. `~/Documents/winapps`
+3. `~/.config/winapps` (standard winapps config location)
+4. `~/winapps`
+5. `~/.winapps`
+6. `~/Documents/winapps`
 
 The directory must contain a `compose.yaml` (or `compose.yml` / `docker-compose.yaml`).
 

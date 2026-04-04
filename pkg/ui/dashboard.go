@@ -24,11 +24,14 @@ type Dashboard struct {
 	lblName    *gtk.Label
 	lblService *gtk.Label
 	lblEngine  *gtk.Label
+	lblUser    *gtk.Label
 	lblIP      *gtk.Label
 	lblCompose *gtk.Label
 
-	btnToggle *gtk.Button
-	btnKill   *gtk.Button
+	btnToggle  *gtk.Button
+	btnPause   *gtk.Button
+	btnRestart *gtk.Button
+	btnKill    *gtk.Button
 
 	startedAt time.Time
 	timerID   glib.SourceHandle
@@ -148,6 +151,7 @@ func (d *Dashboard) buildStatsGrid() *gtk.Grid {
 	d.lblService = d.addStatCell(grid, "SERVICE", "—", 0, 1)
 	d.lblName = d.addStatCell(grid, "CONTAINER", "—", 1, 1)
 	d.lblEngine = d.addStatCell(grid, "ENGINE", "—", 0, 2)
+	d.lblUser = d.addStatCell(grid, "RDP USER", "—", 1, 2)
 
 	return grid
 }
@@ -214,7 +218,7 @@ func (d *Dashboard) buildActions() *gtk.Box {
 	d.btnToggle.Connect("clicked", func() {
 		go func() {
 			status, _ := d.ctrl.GetStatus()
-			if status == container.StateRunning {
+			if status == container.StateRunning || status == container.StatePaused {
 				d.ctrl.Stop()
 			} else if status == container.StateStopped {
 				d.ctrl.Start()
@@ -222,6 +226,25 @@ func (d *Dashboard) buildActions() *gtk.Box {
 		}()
 	})
 	box.PackStart(d.btnToggle, false, false, 0)
+
+	d.btnPause, _ = gtk.ButtonNewWithLabel("Pause")
+	d.btnPause.SetSensitive(false)
+	d.btnPause.Connect("clicked", func() {
+		go func() {
+			status, _ := d.ctrl.GetStatus()
+			if status == container.StateRunning {
+				d.ctrl.Pause()
+			} else if status == container.StatePaused {
+				d.ctrl.Unpause()
+			}
+		}()
+	})
+	box.PackStart(d.btnPause, false, false, 0)
+
+	d.btnRestart, _ = gtk.ButtonNewWithLabel("Restart")
+	d.btnRestart.SetSensitive(false)
+	d.btnRestart.Connect("clicked", func() { go d.ctrl.Restart() })
+	box.PackStart(d.btnRestart, false, false, 0)
 
 	d.btnKill, _ = gtk.ButtonNewWithLabel("Force Kill")
 	d.btnKill.SetSensitive(false)
@@ -240,6 +263,7 @@ func (d *Dashboard) refresh() {
 
 	engine := d.ctrl.Engine()
 	compose := d.ctrl.ComposeFile()
+	rdpUser := d.ctrl.RDPUser()
 
 	glib.IdleAdd(func() {
 		if d.window == nil {
@@ -251,6 +275,9 @@ func (d *Dashboard) refresh() {
 			d.lblStatus.SetText("● Running")
 			d.btnToggle.SetLabel("Stop")
 			d.btnToggle.SetSensitive(true)
+			d.btnPause.SetLabel("Pause")
+			d.btnPause.SetSensitive(true)
+			d.btnRestart.SetSensitive(true)
 			d.btnKill.SetSensitive(false)
 
 			if stats != nil {
@@ -260,6 +287,15 @@ func (d *Dashboard) refresh() {
 				d.lblIP.SetText(stats.IPAddress)
 			}
 
+		case container.StatePaused:
+			d.lblStatus.SetText("● Paused")
+			d.btnToggle.SetLabel("Stop")
+			d.btnToggle.SetSensitive(true)
+			d.btnPause.SetLabel("Resume")
+			d.btnPause.SetSensitive(true)
+			d.btnRestart.SetSensitive(false)
+			d.btnKill.SetSensitive(true)
+
 		case container.StateStopped:
 			d.lblStatus.SetText("● Stopped")
 			d.lblUptime.SetText("—")
@@ -268,22 +304,31 @@ func (d *Dashboard) refresh() {
 			d.lblIP.SetText("—")
 			d.btnToggle.SetLabel("Start")
 			d.btnToggle.SetSensitive(true)
+			d.btnPause.SetSensitive(false)
+			d.btnRestart.SetSensitive(false)
 			d.btnKill.SetSensitive(false)
 
 		case container.StateStarting:
 			d.lblStatus.SetText("● Starting...")
 			d.btnToggle.SetSensitive(false)
+			d.btnPause.SetSensitive(false)
+			d.btnRestart.SetSensitive(false)
 			d.btnKill.SetSensitive(false)
 
 		case container.StateStopping:
 			d.lblStatus.SetText("● Stopping...")
 			d.btnToggle.SetSensitive(false)
+			d.btnPause.SetSensitive(false)
+			d.btnRestart.SetSensitive(false)
 			d.btnKill.SetSensitive(true)
 		}
 
 		d.lblEngine.SetText(engine)
 		d.lblService.SetText(d.ctrl.PrimaryService())
 		d.lblCompose.SetText(compose)
+		if rdpUser != "" {
+			d.lblUser.SetText(rdpUser)
+		}
 	})
 }
 

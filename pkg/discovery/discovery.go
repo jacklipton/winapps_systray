@@ -1,6 +1,7 @@
 package discovery
 
 import (
+	"bufio"
 	"errors"
 	"fmt"
 	"os"
@@ -14,6 +15,7 @@ type Config struct {
 	ComposeFile   string // e.g. "compose.yaml", "docker-compose.yml"
 	ContainerName string
 	Engine        string // "docker" or "podman"
+	RDPUser       string // from winapps.conf, for display
 }
 
 func GetConfig() (*Config, error) {
@@ -22,19 +24,68 @@ func GetConfig() (*Config, error) {
 		return nil, err
 	}
 
+	// Read winapps.conf for engine hint and RDP user
+	waConf := readWinappsConf(home)
+
 	dir, composeFile, err := findWinAppsDir(home)
 	if err != nil {
 		return nil, err
 	}
 
-	engine, containerName := detectEngineAndName(dir)
+	engine, containerName := detectEngineAndName(dir, waConf)
 
-	return &Config{
+	cfg := &Config{
 		WinAppsDir:    dir,
 		ComposeFile:   composeFile,
 		ContainerName: containerName,
 		Engine:        engine,
-	}, nil
+	}
+	if waConf != nil {
+		cfg.RDPUser = waConf.rdpUser
+	}
+
+	return cfg, nil
+}
+
+// winappsConf holds values parsed from ~/.config/winapps/winapps.conf.
+type winappsConf struct {
+	flavor  string // docker, podman, libvirt
+	rdpUser string
+}
+
+func readWinappsConf(home string) *winappsConf {
+	configDir := os.Getenv("XDG_CONFIG_HOME")
+	if configDir == "" {
+		configDir = filepath.Join(home, ".config")
+	}
+	path := filepath.Join(configDir, "winapps", "winapps.conf")
+
+	f, err := os.Open(path)
+	if err != nil {
+		return nil
+	}
+	defer f.Close()
+
+	conf := &winappsConf{}
+	scanner := bufio.NewScanner(f)
+	for scanner.Scan() {
+		line := strings.TrimSpace(scanner.Text())
+		if line == "" || strings.HasPrefix(line, "#") {
+			continue
+		}
+		key, val, ok := strings.Cut(line, "=")
+		if !ok {
+			continue
+		}
+		val = strings.Trim(val, "\"'")
+		switch key {
+		case "WAFLAVOR":
+			conf.flavor = val
+		case "RDP_USER":
+			conf.rdpUser = val
+		}
+	}
+	return conf
 }
 
 // validateDir cleans a user-supplied path and rejects non-absolute or
@@ -79,8 +130,9 @@ func findWinAppsDir(home string) (string, string, error) {
 		}
 	}
 
-	// 3. Common locations
+	// 3. Common locations (including ~/.config/winapps per upstream docs)
 	candidates := []string{
+		filepath.Join(configDir, "winapps"),
 		filepath.Join(home, "winapps"),
 		filepath.Join(home, ".winapps"),
 		filepath.Join(home, "Documents", "winapps"),
@@ -109,8 +161,15 @@ func findComposeFile(dir string) string {
 	return ""
 }
 
-func detectEngineAndName(dir string) (string, string) {
+func detectEngineAndName(dir string, waConf *winappsConf) (string, string) {
 	containerName := "WinApps" // Default
+
+	// If winapps.conf specifies a flavor, prefer it
+	if waConf != nil && (waConf.flavor == "docker" || waConf.flavor == "podman") {
+		if _, err := exec.LookPath(waConf.flavor); err == nil {
+			return waConf.flavor, containerName
+		}
+	}
 
 	// Try to see which engine has the container already
 	engines := []string{"docker", "podman"}
