@@ -61,7 +61,7 @@ func main() {
 	dashboard := ui.NewDashboard(ctrl, dashboardIcon)
 
 	// Set up tray
-	tm := tray.NewTrayManager(ctrl, cfg, iconMgr)
+	tm := tray.NewTrayManager(ctrl, cfg, settingsPath, iconMgr)
 	tm.OnDashboard = func() { dashboard.Show() }
 	tm.Setup()
 

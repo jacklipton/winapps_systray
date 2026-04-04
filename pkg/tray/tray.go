@@ -12,6 +12,7 @@ import (
 	"github.com/jacklipton/winapps_systray/pkg/icons"
 	"github.com/jacklipton/winapps_systray/pkg/indicator"
 	"github.com/jacklipton/winapps_systray/pkg/notify"
+	"github.com/jacklipton/winapps_systray/pkg/ui"
 )
 
 // OnDashboard is called when the user clicks "Details...".
@@ -19,10 +20,11 @@ import (
 type OnDashboardFunc func()
 
 type TrayManager struct {
-	ctrl    *container.Controller
-	cfg     *config.Settings
-	iconMgr *icons.Manager
-	ind     *indicator.Indicator
+	ctrl         *container.Controller
+	cfg          *config.Settings
+	settingsPath string
+	iconMgr      *icons.Manager
+	ind          *indicator.Indicator
 
 	// Menu items (need references for dynamic updates)
 	mStatus  *gtk.MenuItem
@@ -32,6 +34,7 @@ type TrayManager struct {
 	mToggle  *gtk.MenuItem
 	mKill    *gtk.MenuItem
 	mDetails *gtk.MenuItem
+	mSettings *gtk.MenuItem
 
 	lastState container.State
 	startedAt time.Time
@@ -41,11 +44,12 @@ type TrayManager struct {
 	OnDashboard OnDashboardFunc
 }
 
-func NewTrayManager(ctrl *container.Controller, cfg *config.Settings, iconMgr *icons.Manager) *TrayManager {
+func NewTrayManager(ctrl *container.Controller, cfg *config.Settings, settingsPath string, iconMgr *icons.Manager) *TrayManager {
 	return &TrayManager{
-		ctrl:    ctrl,
-		cfg:     cfg,
-		iconMgr: iconMgr,
+		ctrl:         ctrl,
+		cfg:          cfg,
+		settingsPath: settingsPath,
+		iconMgr:      iconMgr,
 	}
 }
 
@@ -84,6 +88,12 @@ func (t *TrayManager) Setup() {
 			t.OnDashboard()
 		}
 	})
+
+	t.mSettings = addMenuItem(menu, "Settings...", func() {
+		sw := ui.NewSettingsWindow(t.cfg, t.settingsPath, t.ctrl.Engine())
+		sw.Show()
+	})
+
 	addMenuItem(menu, "Quit", func() { gtk.MainQuit() })
 
 	menu.ShowAll()
