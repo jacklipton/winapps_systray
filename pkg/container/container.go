@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"os/exec"
+	"regexp"
 	"strings"
 	"sync"
 	"time"
@@ -23,12 +24,16 @@ const (
 	StateError    State = "Error"
 )
 
+// validContainerName matches Docker/Podman container name rules.
+var validContainerName = regexp.MustCompile(`^[a-zA-Z0-9][a-zA-Z0-9._-]*$`)
+
 type Controller struct {
 	cfg           *discovery.Config
 	settings      *config.Settings
 	mu            sync.Mutex
-	transition    State  // non-empty while a Start/Stop is in progress
-	containerName string // dynamically discovered
+	transition    State     // non-empty while a Start/Stop is in progress
+	transitionAt  time.Time // when the current transition started
+	containerName string    // dynamically discovered
 }
 
 func NewController(cfg *discovery.Config, settings *config.Settings) *Controller {
@@ -58,10 +63,21 @@ func (c *Controller) GetStatus() (State, error) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 
+	// Always clear transition on error
+	if actual == StateError {
+		c.transition = ""
+		return StateError, nil
+	}
+
 	if c.transition == StateStarting {
 		if actual == StateRunning {
 			c.transition = ""
 			return StateRunning, nil
+		}
+		// If container is stopped after a grace period, it likely crashed on startup
+		if actual == StateStopped && time.Since(c.transitionAt) > 15*time.Second {
+			c.transition = ""
+			return StateStopped, nil
 		}
 		return StateStarting, nil
 	}
@@ -121,7 +137,9 @@ func (c *Controller) pollState() (State, error) {
 	// For now, we take the first container matching the service (usually only one)
 	target := containers[0]
 	c.mu.Lock()
-	c.containerName = target.Name
+	if validContainerName.MatchString(target.Name) {
+		c.containerName = target.Name
+	}
 	c.mu.Unlock()
 
 	state := strings.ToLower(target.State)
@@ -146,6 +164,7 @@ func (c *Controller) pollState() (State, error) {
 func (c *Controller) Start() error {
 	c.mu.Lock()
 	c.transition = StateStarting
+	c.transitionAt = time.Now()
 	c.mu.Unlock()
 
 	err := c.compose("up", "-d").Run()
@@ -160,6 +179,7 @@ func (c *Controller) Start() error {
 func (c *Controller) Stop() error {
 	c.mu.Lock()
 	c.transition = StateStopping
+	c.transitionAt = time.Now()
 	c.mu.Unlock()
 
 	err := c.compose("stop").Run()
@@ -193,4 +213,22 @@ func (c *Controller) WaitUntilState(target State, timeout time.Duration) error {
 	c.transition = ""
 	c.mu.Unlock()
 	return errors.New("timeout waiting for container state")
+}
+
+// GetStartTime returns the container's actual start time via inspect.
+func (c *Controller) GetStartTime() (time.Time, error) {
+	c.mu.Lock()
+	name := c.containerName
+	c.mu.Unlock()
+
+	if name == "" {
+		return time.Time{}, errors.New("no container")
+	}
+
+	cmd := exec.Command(c.cfg.Engine, "inspect", "--format", "{{.State.StartedAt}}", "--", name)
+	out, err := cmd.Output()
+	if err != nil {
+		return time.Time{}, err
+	}
+	return time.Parse(time.RFC3339Nano, strings.TrimSpace(string(out)))
 }

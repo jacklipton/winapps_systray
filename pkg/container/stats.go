@@ -84,8 +84,8 @@ func (c *Controller) GetStats() *Stats {
 		return nil
 	}
 
-	// docker/podman stats --no-stream --format json <container>
-	cmd := exec.Command(c.cfg.Engine, "stats", "--no-stream", "--format", "json", containerName)
+	// docker/podman stats --no-stream --format json -- <container>
+	cmd := exec.Command(c.cfg.Engine, "stats", "--no-stream", "--format", "json", "--", containerName)
 	output, err := cmd.Output()
 	if err != nil || len(output) == 0 {
 		return nil
@@ -99,7 +99,7 @@ func (c *Controller) GetStats() *Stats {
 	// Get IP address via inspect
 	ipCmd := exec.Command(c.cfg.Engine, "inspect", "--format",
 		"{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}",
-		containerName)
+		"--", containerName)
 	if ipOut, err := ipCmd.Output(); err == nil {
 		stats.IPAddress = parseIPOutput(string(ipOut))
 	}

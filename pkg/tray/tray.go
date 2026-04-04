@@ -40,8 +40,10 @@ type TrayManager struct {
 	startedAt time.Time
 	animFrame int
 	animTimer glib.SourceHandle
+	pollTimer glib.SourceHandle
 
 	OnDashboard OnDashboardFunc
+	Dashboard   *ui.Dashboard
 }
 
 func NewTrayManager(ctrl *container.Controller, cfg *config.Settings, settingsPath string, iconMgr *icons.Manager) *TrayManager {
@@ -91,6 +93,7 @@ func (t *TrayManager) Setup() {
 
 	t.mSettings = addMenuItem(menu, "Settings...", func() {
 		sw := ui.NewSettingsWindow(t.cfg, t.settingsPath, t.ctrl.Engine())
+		sw.OnSave = func() { t.restartPollTimer() }
 		sw.Show()
 	})
 
@@ -103,7 +106,14 @@ func (t *TrayManager) Setup() {
 	t.ind.SetMenu(menu.Native())
 
 	// Start status polling via GTK timer
-	glib.TimeoutAdd(uint(t.cfg.PollIntervalSeconds*1000), func() bool {
+	t.restartPollTimer()
+}
+
+func (t *TrayManager) restartPollTimer() {
+	if t.pollTimer != 0 {
+		glib.SourceRemove(t.pollTimer)
+	}
+	t.pollTimer = glib.TimeoutAdd(uint(t.cfg.PollIntervalSeconds*1000), func() bool {
 		go t.pollAndUpdate()
 		return true
 	})
@@ -130,9 +140,16 @@ func (t *TrayManager) pollAndUpdate() {
 			t.notifyTransition(prev, status)
 		}
 
-		// Track uptime start
+		// Track uptime start — use real container start time when possible
 		if status == container.StateRunning && prev != container.StateRunning {
-			t.startedAt = time.Now()
+			if startTime, err := t.ctrl.GetStartTime(); err == nil {
+				t.startedAt = startTime
+			} else {
+				t.startedAt = time.Now()
+			}
+			if t.Dashboard != nil {
+				t.Dashboard.SetStartedAt(t.startedAt)
+			}
 		}
 	})
 }
@@ -270,7 +287,10 @@ func formatDuration(d time.Duration) string {
 	if h > 0 {
 		return fmt.Sprintf("%dh %dm", h, m)
 	}
-	return fmt.Sprintf("%dm", m)
+	if m > 0 {
+		return fmt.Sprintf("%dm", m)
+	}
+	return fmt.Sprintf("%ds", int(d.Seconds())%60)
 }
 
 // loadCSS injects CSS for the status header background coloring.

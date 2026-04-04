@@ -2,7 +2,7 @@
 
 A system tray application for managing [WinApps](https://github.com/winapps-org/winapps) containers on Linux.
 
-Start/stop your Windows VM with a single click and free up 4GB+ of RAM when you're not using it.
+Start/stop your Windows VM with a single click and free up RAM when you're not using it.
 
 ## Features
 
@@ -81,7 +81,7 @@ echo "/path/to/your/winapps" > ~/.config/winapps-systray/config
 
 ## Building packages
 
-To build `.rpm` or `.deb` packages, install [nfpm](https://nfpm.goreleaser.com/install/) and run:
+To build `.rpm` or `.deb` packages, install [nfpm](https://nfpm.goreleaser.com/docs/install/) and run:
 
 ```bash
 make rpm   # Fedora/RHEL
@@ -111,4 +111,4 @@ make user-uninstall
 
 ## License
 
-MIT
+GPL

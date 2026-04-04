@@ -1,7 +1,10 @@
 package ui
 
 import (
+	"fmt"
 	"log"
+	"os"
+	"path/filepath"
 
 	"github.com/gotk3/gotk3/gtk"
 	"github.com/jacklipton/winapps_systray/pkg/config"
@@ -14,12 +17,14 @@ type SettingsWindow struct {
 	path     string // path to settings.json
 
 	// Widgets
-	fileChooser *gtk.FileChooserButton
+	fileChooser  *gtk.FileChooserButton
 	comboService *gtk.ComboBoxText
-	spinPoll    *gtk.SpinButton
-	chkNotify   *gtk.CheckButton
+	spinPoll     *gtk.SpinButton
+	chkNotify    *gtk.CheckButton
+	lblDirStatus *gtk.Label
 
 	engine string
+	OnSave func() // called after settings are saved, for live-reload
 }
 
 func NewSettingsWindow(settings *config.Settings, path, engine string) *SettingsWindow {
@@ -62,6 +67,12 @@ func (s *SettingsWindow) Show() {
 	}
 	s.fileChooser.Connect("file-set", s.onDirChanged)
 	dirBox.PackStart(s.fileChooser, false, false, 0)
+
+	s.lblDirStatus, _ = gtk.LabelNew("")
+	s.lblDirStatus.SetHAlign(gtk.ALIGN_START)
+	dirBox.PackStart(s.lblDirStatus, false, false, 0)
+	s.validateDir()
+
 	mainBox.PackStart(dirBox, false, false, 0)
 
 	// --- Primary Service ---
@@ -111,7 +122,24 @@ func (s *SettingsWindow) Show() {
 func (s *SettingsWindow) onDirChanged() {
 	newDir := s.fileChooser.GetFilename()
 	s.settings.WinAppsDir = newDir
+	s.validateDir()
 	s.updateServices()
+}
+
+func (s *SettingsWindow) validateDir() {
+	dir := s.settings.WinAppsDir
+	if dir == "" {
+		s.lblDirStatus.SetMarkup("<small>No directory selected</small>")
+		return
+	}
+	// Check for compose file
+	for _, name := range []string{"compose.yaml", "compose.yml", "docker-compose.yaml", "docker-compose.yml"} {
+		if _, err := os.Stat(filepath.Join(dir, name)); err == nil {
+			s.lblDirStatus.SetMarkup(fmt.Sprintf("<small>Found %s</small>", name))
+			return
+		}
+	}
+	s.lblDirStatus.SetMarkup("<small><span foreground='#cc0000'>No compose file found in this directory</span></small>")
 }
 
 func (s *SettingsWindow) updateServices() {
@@ -155,7 +183,11 @@ func (s *SettingsWindow) onSave() {
 		return
 	}
 
-	msg := gtk.MessageDialogNew(s.window, gtk.DIALOG_MODAL, gtk.MESSAGE_INFO, gtk.BUTTONS_OK, "%s", "Settings saved. Please restart the application to apply all changes.")
+	if s.OnSave != nil {
+		s.OnSave()
+	}
+
+	msg := gtk.MessageDialogNew(s.window, gtk.DIALOG_MODAL, gtk.MESSAGE_INFO, gtk.BUTTONS_OK, "%s", "Settings saved.")
 	msg.Run()
 	msg.Destroy()
 	s.window.Close()

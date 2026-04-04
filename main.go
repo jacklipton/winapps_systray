@@ -1,10 +1,14 @@
 package main
 
 import (
+	"fmt"
 	"log"
 	"os"
+	"os/signal"
 	"path/filepath"
+	"syscall"
 
+	"github.com/gotk3/gotk3/glib"
 	"github.com/gotk3/gotk3/gtk"
 	"github.com/jacklipton/winapps_systray/pkg/config"
 	"github.com/jacklipton/winapps_systray/pkg/container"
@@ -16,6 +20,14 @@ import (
 
 func main() {
 	gtk.Init(nil)
+
+	// Single-instance lock
+	lockFile, err := acquireLock()
+	if err != nil {
+		ui.ShowError(nil, "WinApps Systray is already running.")
+		return
+	}
+	defer lockFile.Close()
 
 	// Load config
 	configDir := os.Getenv("XDG_CONFIG_HOME")
@@ -73,6 +85,7 @@ func main() {
 	// Set up tray
 	tm := tray.NewTrayManager(ctrl, cfg, settingsPath, iconMgr)
 	tm.OnDashboard = func() { dashboard.Show() }
+	tm.Dashboard = dashboard
 	tm.Setup()
 
 	if isInitialSetup {
@@ -80,6 +93,32 @@ func main() {
 		sw.Show()
 	}
 
+	// Handle signals for clean shutdown
+	sigCh := make(chan os.Signal, 1)
+	signal.Notify(sigCh, syscall.SIGINT, syscall.SIGTERM)
+	go func() {
+		<-sigCh
+		glib.IdleAdd(func() { gtk.MainQuit() })
+	}()
+
 	// Run GTK main loop (blocks until Quit)
 	gtk.Main()
+}
+
+// acquireLock tries to obtain an exclusive file lock to prevent multiple instances.
+func acquireLock() (*os.File, error) {
+	runtimeDir := os.Getenv("XDG_RUNTIME_DIR")
+	if runtimeDir == "" {
+		runtimeDir = os.TempDir()
+	}
+	lockPath := filepath.Join(runtimeDir, "winapps-systray.lock")
+	f, err := os.OpenFile(lockPath, os.O_CREATE|os.O_RDWR, 0600)
+	if err != nil {
+		return nil, err
+	}
+	if err := syscall.Flock(int(f.Fd()), syscall.LOCK_EX|syscall.LOCK_NB); err != nil {
+		f.Close()
+		return nil, fmt.Errorf("another instance is already running")
+	}
+	return f, nil
 }

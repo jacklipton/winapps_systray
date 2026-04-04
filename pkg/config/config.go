@@ -37,7 +37,7 @@ func (s *Settings) Save(path string) error {
 	if err != nil {
 		return err
 	}
-	return os.WriteFile(path, data, 0644)
+	return os.WriteFile(path, data, 0600)
 }
 
 // Load reads settings from path. If the file doesn't exist, writes defaults
@@ -85,7 +85,7 @@ func writeDefaults(path string, cfg *Settings) {
 		return
 	}
 	data, _ := json.MarshalIndent(cfg, "", "  ")
-	if err := os.WriteFile(path, data, 0644); err != nil {
+	if err := os.WriteFile(path, data, 0600); err != nil {
 		log.Printf("warning: cannot write default settings to %s: %v", path, err)
 	}
 }
