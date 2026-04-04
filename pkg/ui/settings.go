@@ -1,14 +1,16 @@
 package ui
 
 import (
-	"fmt"
-	"log"
-	"os"
-	"path/filepath"
+        "fmt"
+        "log"
+        "os"
+        "path/filepath"
+        "strconv"
 
-	"github.com/gotk3/gotk3/gtk"
-	"github.com/jacklipton/winapps_systray/pkg/config"
-	"github.com/jacklipton/winapps_systray/pkg/discovery"
+        "github.com/gotk3/gotk3/gtk"
+        "github.com/jacklipton/winapps_systray/pkg/compose"
+        "github.com/jacklipton/winapps_systray/pkg/config"
+        "github.com/jacklipton/winapps_systray/pkg/discovery"
 )
 
 type SettingsWindow struct {
@@ -23,11 +25,19 @@ type SettingsWindow struct {
         chkNotify    *gtk.CheckButton
         lblDirStatus *gtk.Label
 
+        // VM Configuration widgets
+        comboRAM     *gtk.ComboBoxText
+        spinCPU      *gtk.SpinButton
+        entryDisk    *gtk.Entry
+        entryVersion *gtk.Entry
+        entryUser    *gtk.Entry
+        entryPass    *gtk.Entry
+        lblVMStatus  *gtk.Label
+
         engine          string
         composeFilePath string // full path to compose.yaml, empty if not found
         OnSave          func() // called after settings are saved, for live-reload
 }
-
 func NewSettingsWindow(settings *config.Settings, path, engine, composeFilePath string) *SettingsWindow {
         return &SettingsWindow{
                 settings:        settings,
@@ -141,8 +151,117 @@ func (s *SettingsWindow) buildVMConfigTab() *gtk.Box {
         box.SetMarginTop(18)
         box.SetMarginBottom(18)
 
-        lbl, _ := gtk.LabelNew("VM Configuration — coming soon")
-        box.PackStart(lbl, false, false, 0)
+        // If no compose file, show disabled message
+        if s.composeFilePath == "" {
+                lbl, _ := gtk.LabelNew("No compose file found in WinApps directory.")
+                box.PackStart(lbl, false, false, 0)
+                return box
+        }
+
+        // Load current values
+        service := s.settings.PrimaryService
+        if service == "" {
+                service = "windows"
+        }
+        vmCfg, err := compose.Load(s.composeFilePath, service)
+        if err != nil {
+                lbl, _ := gtk.LabelNew(fmt.Sprintf("Could not parse compose file:\n%v", err))
+                box.PackStart(lbl, false, false, 0)
+                return box
+        }
+
+        grid, _ := gtk.GridNew()
+        grid.SetColumnSpacing(12)
+        grid.SetRowSpacing(10)
+
+        // RAM Size — dropdown with presets + editable
+        lblRAM, _ := gtk.LabelNew("RAM Size")
+        lblRAM.SetHAlign(gtk.ALIGN_START)
+        grid.Attach(lblRAM, 0, 0, 1, 1)
+
+        s.comboRAM, _ = gtk.ComboBoxTextNewWithEntry()
+        for _, preset := range []string{"2G", "4G", "8G", "16G"} {
+                s.comboRAM.AppendText(preset)
+        }
+        if vmCfg.RAMSize != "" {
+                entry, _ := s.comboRAM.GetEntry()
+                entry.SetText(vmCfg.RAMSize)
+        }
+        grid.Attach(s.comboRAM, 1, 0, 1, 1)
+
+        // CPU Cores — spin button
+        lblCPU, _ := gtk.LabelNew("CPU Cores")
+        lblCPU.SetHAlign(gtk.ALIGN_START)
+        grid.Attach(lblCPU, 0, 1, 1, 1)
+
+        cpuVal := 4.0
+        if vmCfg.CPUCores != "" {
+                if v, err := strconv.ParseFloat(vmCfg.CPUCores, 64); err == nil {
+                        cpuVal = v
+                }
+        }
+        cpuAdj, _ := gtk.AdjustmentNew(cpuVal, 1, 64, 1, 4, 0)
+        s.spinCPU, _ = gtk.SpinButtonNew(cpuAdj, 1, 0)
+        grid.Attach(s.spinCPU, 1, 1, 1, 1)
+
+        // Disk Size
+        lblDisk, _ := gtk.LabelNew("Disk Size")
+        lblDisk.SetHAlign(gtk.ALIGN_START)
+        grid.Attach(lblDisk, 0, 2, 1, 1)
+
+        s.entryDisk, _ = gtk.EntryNew()
+        s.entryDisk.SetText(vmCfg.DiskSize)
+        grid.Attach(s.entryDisk, 1, 2, 1, 1)
+
+        // Windows Version
+        lblVer, _ := gtk.LabelNew("Windows Version")
+        lblVer.SetHAlign(gtk.ALIGN_START)
+        grid.Attach(lblVer, 0, 3, 1, 1)
+
+        s.entryVersion, _ = gtk.EntryNew()
+        s.entryVersion.SetText(vmCfg.Version)
+        grid.Attach(s.entryVersion, 1, 3, 1, 1)
+
+        // Username
+        lblUser, _ := gtk.LabelNew("Username")
+        lblUser.SetHAlign(gtk.ALIGN_START)
+        grid.Attach(lblUser, 0, 4, 1, 1)
+
+        s.entryUser, _ = gtk.EntryNew()
+        s.entryUser.SetText(vmCfg.Username)
+        grid.Attach(s.entryUser, 1, 4, 1, 1)
+
+        // Password
+        lblPass, _ := gtk.LabelNew("Password")
+        lblPass.SetHAlign(gtk.ALIGN_START)
+        grid.Attach(lblPass, 0, 5, 1, 1)
+
+        s.entryPass, _ = gtk.EntryNew()
+        s.entryPass.SetText(vmCfg.Password)
+        s.entryPass.SetVisibility(false)
+        grid.Attach(s.entryPass, 1, 5, 1, 1)
+
+        // Show/hide password toggle
+        btnShowPass, _ := gtk.ToggleButtonNewWithLabel("Show")
+        btnShowPass.Connect("toggled", func() {
+                s.entryPass.SetVisibility(btnShowPass.GetActive())
+        })
+        grid.Attach(btnShowPass, 2, 5, 1, 1)
+
+        box.PackStart(grid, false, false, 0)
+
+        // Status label (for errors and success messages)
+        s.lblVMStatus, _ = gtk.LabelNew("")
+        s.lblVMStatus.SetHAlign(gtk.ALIGN_START)
+        box.PackStart(s.lblVMStatus, false, false, 0)
+
+        // Save button
+        btnBox, _ := gtk.BoxNew(gtk.ORIENTATION_HORIZONTAL, 0)
+        btnSave, _ := gtk.ButtonNewWithLabel("Save VM Settings")
+        btnSave.SetHAlign(gtk.ALIGN_END)
+        btnSave.Connect("clicked", s.onSaveVM)
+        btnBox.PackEnd(btnSave, false, false, 0)
+        box.PackEnd(btnBox, false, false, 0)
 
         return box
 }
@@ -225,4 +344,44 @@ func (s *SettingsWindow) onSave() {
 	msg.Run()
 	msg.Destroy()
 	s.window.Close()
-}
+	}
+
+	func (s *SettingsWindow) onSaveVM() {
+	entry, _ := s.comboRAM.GetEntry()
+	ramText, _ := entry.GetText()
+	diskText, _ := s.entryDisk.GetText()
+	versionText, _ := s.entryVersion.GetText()
+	userText, _ := s.entryUser.GetText()
+	passText, _ := s.entryPass.GetText()
+
+	vmCfg := &compose.VMConfig{
+	        RAMSize:  ramText,
+	        CPUCores: strconv.Itoa(int(s.spinCPU.GetValue())),
+	        DiskSize: diskText,
+	        Version:  versionText,
+	        Username: userText,
+	        Password: passText,
+	}
+
+	if err := compose.Validate(vmCfg); err != nil {
+	        s.lblVMStatus.SetMarkup(fmt.Sprintf("<span foreground='#cc0000'>%s</span>", err.Error()))
+	        return
+	}
+
+	service := s.settings.PrimaryService
+	if service == "" {
+	        service = "windows"
+	}
+
+	if err := compose.Save(s.composeFilePath, service, vmCfg); err != nil {
+	        log.Printf("failed to save VM config: %v", err)
+	        msg := gtk.MessageDialogNew(s.window, gtk.DIALOG_MODAL, gtk.MESSAGE_ERROR, gtk.BUTTONS_OK,
+	                "Failed to save VM configuration: %v", err)
+	        msg.Run()
+	        msg.Destroy()
+	        return
+	}
+
+	s.lblVMStatus.SetMarkup("<span foreground='#4CAF50'>Saved. Restart VM for changes to take effect.</span>")
+	}
+
