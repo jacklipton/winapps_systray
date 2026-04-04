@@ -10,10 +10,12 @@ import (
 )
 
 type Settings struct {
-	Notifications       bool `json:"notifications"`
-	PollIntervalSeconds int  `json:"poll_interval_seconds"`
-	StartTimeoutSeconds int  `json:"start_timeout_seconds"`
-	StopTimeoutSeconds  int  `json:"stop_timeout_seconds"`
+	Notifications       bool   `json:"notifications"`
+	PollIntervalSeconds int    `json:"poll_interval_seconds"`
+	StartTimeoutSeconds int    `json:"start_timeout_seconds"`
+	StopTimeoutSeconds  int    `json:"stop_timeout_seconds"`
+	WinAppsDir          string `json:"winapps_dir"`
+	PrimaryService      string `json:"primary_service"`
 }
 
 func defaults() Settings {
@@ -23,6 +25,19 @@ func defaults() Settings {
 		StartTimeoutSeconds: 60,
 		StopTimeoutSeconds:  120,
 	}
+}
+
+// Save marshals settings to JSON and writes it to path.
+func (s *Settings) Save(path string) error {
+	dir := filepath.Dir(path)
+	if err := os.MkdirAll(dir, 0755); err != nil {
+		return err
+	}
+	data, err := json.MarshalIndent(s, "", "  ")
+	if err != nil {
+		return err
+	}
+	return os.WriteFile(path, data, 0644)
 }
 
 // Load reads settings from path. If the file doesn't exist, writes defaults

@@ -135,3 +135,21 @@ func detectEngineAndName(dir string) (string, string) {
 
 	return "docker", containerName
 }
+
+// ListServices returns a list of service names defined in the compose file
+// at the given directory using the specified container engine.
+func ListServices(dir, engine string) ([]string, error) {
+	cmd := exec.Command(engine, "compose", "config", "--services")
+	cmd.Dir = dir
+	output, err := cmd.Output()
+	if err != nil {
+		return nil, fmt.Errorf("list services: %w", err)
+	}
+
+	raw := strings.TrimSpace(string(output))
+	if raw == "" {
+		return []string{}, nil
+	}
+
+	return strings.Split(raw, "\n"), nil
+}

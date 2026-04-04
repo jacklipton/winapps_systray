@@ -49,3 +49,37 @@ func TestLoadFromFile(t *testing.T) {
 		t.Errorf("expected stop timeout default 120, got %d", cfg.StopTimeoutSeconds)
 	}
 }
+
+func TestSave(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "settings.json")
+	cfg := &Settings{
+		Notifications:       false,
+		PollIntervalSeconds: 15,
+		WinAppsDir:          "/home/user/winapps",
+		PrimaryService:      "windows",
+	}
+
+	if err := cfg.Save(path); err != nil {
+		t.Fatalf("failed to save config: %v", err)
+	}
+
+	// Load it back and verify
+	loaded, err := Load(path)
+	if err != nil {
+		t.Fatalf("failed to load saved config: %v", err)
+	}
+
+	if loaded.Notifications {
+		t.Error("expected notifications to be false")
+	}
+	if loaded.PollIntervalSeconds != 15 {
+		t.Errorf("expected poll interval 15, got %d", loaded.PollIntervalSeconds)
+	}
+	if loaded.WinAppsDir != "/home/user/winapps" {
+		t.Errorf("expected winapps dir /home/user/winapps, got %s", loaded.WinAppsDir)
+	}
+	if loaded.PrimaryService != "windows" {
+		t.Errorf("expected primary service windows, got %s", loaded.PrimaryService)
+	}
+}

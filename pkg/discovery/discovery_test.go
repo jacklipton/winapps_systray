@@ -83,3 +83,29 @@ func TestFindWinAppsDirComposeYml(t *testing.T) {
 		t.Errorf("Expected compose.yml, got %s", composeFile)
 	}
 }
+
+func TestListServices(t *testing.T) {
+	tempDir := t.TempDir()
+
+	// Create a dummy "docker" script that outputs service names
+	mockDocker := filepath.Join(tempDir, "docker")
+	content := "#!/bin/sh\necho \"service1\nservice2\nservice3\""
+	os.WriteFile(mockDocker, []byte(content), 0755)
+
+	t.Setenv("PATH", tempDir+string(os.PathListSeparator)+os.Getenv("PATH"))
+
+	services, err := ListServices(tempDir, "docker")
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	expected := []string{"service1", "service2", "service3"}
+	if len(services) != len(expected) {
+		t.Fatalf("expected %d services, got %d", len(expected), len(services))
+	}
+	for i, s := range services {
+		if s != expected[i] {
+			t.Errorf("expected %s at index %d, got %s", expected[i], i, s)
+		}
+	}
+}
