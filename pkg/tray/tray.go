@@ -222,7 +222,7 @@ func (t *TrayManager) updateUI(state container.State, stats *container.Stats) {
 		t.mPause.SetSensitive(false)
 		t.mRestart.SetSensitive(false)
 		t.mKill.SetSensitive(false)
-		t.mDetails.SetSensitive(false)
+		t.mDetails.SetSensitive(true)
 		t.mUptime.SetLabel("Uptime: —")
 		t.mMemory.SetLabel("Memory: —")
 
@@ -234,7 +234,7 @@ func (t *TrayManager) updateUI(state container.State, stats *container.Stats) {
 		t.mPause.SetSensitive(false)
 		t.mRestart.SetSensitive(false)
 		t.mKill.SetSensitive(true)
-		t.mDetails.SetSensitive(false)
+		t.mDetails.SetSensitive(true)
 		t.startAnimation(t.iconMgr.StartingFrames())
 
 	case container.StateStopping:

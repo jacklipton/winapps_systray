@@ -323,6 +323,18 @@ func (d *Dashboard) refresh() {
 			d.btnPause.SetSensitive(false)
 			d.btnRestart.SetSensitive(false)
 			d.btnKill.SetSensitive(true)
+
+		case container.StateError:
+			d.lblStatus.SetText("● Error")
+			d.lblUptime.SetText("—")
+			d.lblMemory.SetText("—")
+			d.lblCPU.SetText("—")
+			d.lblIP.SetText("—")
+			d.btnToggle.SetLabel("Start")
+			d.btnToggle.SetSensitive(true)
+			d.btnPause.SetSensitive(false)
+			d.btnRestart.SetSensitive(false)
+			d.btnKill.SetSensitive(true)
 		}
 
 		d.lblEngine.SetText(engine)
