@@ -73,7 +73,26 @@ func Load(path string) (*Settings, error) {
 		cfg.StopTimeoutSeconds = d.StopTimeoutSeconds
 	}
 
+	cfg.validate()
+
 	return &cfg, nil
+}
+
+// validate clamps settings to safe ranges.
+func (s *Settings) validate() {
+	s.PollIntervalSeconds = clamp(s.PollIntervalSeconds, 1, 300)
+	s.StartTimeoutSeconds = clamp(s.StartTimeoutSeconds, 1, 600)
+	s.StopTimeoutSeconds = clamp(s.StopTimeoutSeconds, 1, 600)
+}
+
+func clamp(val, min, max int) int {
+	if val < min {
+		return min
+	}
+	if val > max {
+		return max
+	}
+	return val
 }
 
 // writeDefaults creates the settings file with default values.

@@ -52,6 +52,47 @@ func TestLoadFromFile(t *testing.T) {
 	}
 }
 
+func TestLoadClampsNegativeValues(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "settings.json")
+	if err := os.WriteFile(path, []byte(`{"poll_interval_seconds":-5,"start_timeout_seconds":-1,"stop_timeout_seconds":0}`), 0644); err != nil {
+		t.Fatalf("failed to write test config: %v", err)
+	}
+
+	cfg, err := Load(path)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if cfg.PollIntervalSeconds < 1 {
+		t.Errorf("expected poll interval >= 1, got %d", cfg.PollIntervalSeconds)
+	}
+	if cfg.StartTimeoutSeconds < 1 {
+		t.Errorf("expected start timeout >= 1, got %d", cfg.StartTimeoutSeconds)
+	}
+	if cfg.StopTimeoutSeconds < 1 {
+		t.Errorf("expected stop timeout >= 1, got %d", cfg.StopTimeoutSeconds)
+	}
+}
+
+func TestLoadClampsExcessiveValues(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "settings.json")
+	if err := os.WriteFile(path, []byte(`{"poll_interval_seconds":3600,"start_timeout_seconds":99999}`), 0644); err != nil {
+		t.Fatalf("failed to write test config: %v", err)
+	}
+
+	cfg, err := Load(path)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if cfg.PollIntervalSeconds > 300 {
+		t.Errorf("expected poll interval <= 300, got %d", cfg.PollIntervalSeconds)
+	}
+	if cfg.StartTimeoutSeconds > 600 {
+		t.Errorf("expected start timeout <= 600, got %d", cfg.StartTimeoutSeconds)
+	}
+}
+
 func TestSave(t *testing.T) {
 	dir := t.TempDir()
 	path := filepath.Join(dir, "settings.json")
