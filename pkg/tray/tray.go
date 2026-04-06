@@ -233,7 +233,7 @@ func (t *TrayManager) updateUI(state container.State, stats *container.Stats) {
 		t.mToggle.SetSensitive(false)
 		t.mPause.SetSensitive(false)
 		t.mRestart.SetSensitive(false)
-		t.mKill.SetSensitive(false)
+		t.mKill.SetSensitive(true)
 		t.mDetails.SetSensitive(false)
 		t.startAnimation(t.iconMgr.StartingFrames())
 
@@ -273,15 +273,21 @@ func (t *TrayManager) onToggle() {
 	switch status {
 	case container.StateRunning, container.StatePaused:
 		glib.IdleAdd(func() bool { t.updateUI(container.StateStopping, nil); return false })
-		if err := t.ctrl.Stop(); err != nil && t.cfg.Notifications {
-			notify.Send("WinApps", fmt.Sprintf("Failed to stop Windows VM: %v", err), stoppedIcon)
+		if err := t.ctrl.Stop(); err != nil {
+			glib.IdleAdd(func() { t.mStatus.SetLabel("● WinApps — Stop Failed") })
+			if t.cfg.Notifications {
+				notify.Send("WinApps", fmt.Sprintf("Failed to stop Windows VM: %v", err), stoppedIcon)
+			}
 			return
 		}
 		_ = t.ctrl.WaitUntilState(container.StateStopped, time.Duration(t.cfg.StopTimeoutSeconds)*time.Second)
 	case container.StateStopped:
 		glib.IdleAdd(func() bool { t.updateUI(container.StateStarting, nil); return false })
-		if err := t.ctrl.Start(); err != nil && t.cfg.Notifications {
-			notify.Send("WinApps", fmt.Sprintf("Failed to start Windows VM: %v", err), iconPath)
+		if err := t.ctrl.Start(); err != nil {
+			glib.IdleAdd(func() { t.mStatus.SetLabel("● WinApps — Start Failed") })
+			if t.cfg.Notifications {
+				notify.Send("WinApps", fmt.Sprintf("Failed to start Windows VM: %v", err), iconPath)
+			}
 			return
 		}
 		_ = t.ctrl.WaitUntilState(container.StateRunning, time.Duration(t.cfg.StartTimeoutSeconds)*time.Second)
@@ -307,8 +313,11 @@ func (t *TrayManager) onPauseToggle() {
 func (t *TrayManager) onRestart() {
 	iconPath := t.iconMgr.Dir() + "/winapps-running.svg"
 	glib.IdleAdd(func() bool { t.updateUI(container.StateStarting, nil); return false })
-	if err := t.ctrl.Restart(); err != nil && t.cfg.Notifications {
-		notify.Send("WinApps", fmt.Sprintf("Failed to restart Windows VM: %v", err), iconPath)
+	if err := t.ctrl.Restart(); err != nil {
+		glib.IdleAdd(func() { t.mStatus.SetLabel("● WinApps — Restart Failed") })
+		if t.cfg.Notifications {
+			notify.Send("WinApps", fmt.Sprintf("Failed to restart Windows VM: %v", err), iconPath)
+		}
 		return
 	}
 	_ = t.ctrl.WaitUntilState(container.StateRunning, time.Duration(t.cfg.StartTimeoutSeconds)*time.Second)
