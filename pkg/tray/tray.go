@@ -1,21 +1,22 @@
 package tray
 
 import (
-        "fmt"
-        "os/exec"
-        "path/filepath"
-        "time"
+	"fmt"
+	"os/exec"
+	"path/filepath"
+	"time"
 
-        "github.com/gotk3/gotk3/gdk"
-        "github.com/gotk3/gotk3/glib"
-        "github.com/gotk3/gotk3/gtk"
-        "github.com/jacklipton/winapps_systray/pkg/config"
-        "github.com/jacklipton/winapps_systray/pkg/container"
-        "github.com/jacklipton/winapps_systray/pkg/icons"
-        "github.com/jacklipton/winapps_systray/pkg/indicator"
-        "github.com/jacklipton/winapps_systray/pkg/notify"
-        "github.com/jacklipton/winapps_systray/pkg/ui"
+	"github.com/gotk3/gotk3/gdk"
+	"github.com/gotk3/gotk3/glib"
+	"github.com/gotk3/gotk3/gtk"
+	"github.com/jacklipton/winapps_systray/pkg/config"
+	"github.com/jacklipton/winapps_systray/pkg/container"
+	"github.com/jacklipton/winapps_systray/pkg/icons"
+	"github.com/jacklipton/winapps_systray/pkg/indicator"
+	"github.com/jacklipton/winapps_systray/pkg/notify"
+	"github.com/jacklipton/winapps_systray/pkg/ui"
 )
+
 // OnDashboard is called when the user clicks "Details...".
 // Set by main before calling Setup.
 type OnDashboardFunc func()
@@ -39,10 +40,10 @@ type TrayManager struct {
 	mDetails  *gtk.MenuItem
 	mSettings *gtk.MenuItem
 
-	lastState container.State
-	startedAt time.Time
-	animFrame int
-	animTimer glib.SourceHandle
+	lastState  container.State
+	startedAt  time.Time
+	animFrame  int
+	animTimer  glib.SourceHandle
 	pollTimer  glib.SourceHandle
 	pollErrors int
 
@@ -104,10 +105,10 @@ func (t *TrayManager) Setup() {
 	})
 
 	t.mSettings = addMenuItem(menu, "Settings...", func() {
-	        composePath := filepath.Join(t.ctrl.WinAppsDir(), t.ctrl.ComposeFile())
-	        sw := ui.NewSettingsWindow(t.cfg, t.settingsPath, t.ctrl.Engine(), composePath)
-	        sw.OnSave = func() { t.restartPollTimer() }
-	        sw.Show()
+		composePath := filepath.Join(t.ctrl.WinAppsDir(), t.ctrl.ComposeFile())
+		sw := ui.NewSettingsWindow(t.cfg, t.settingsPath, t.ctrl.Engine(), composePath)
+		sw.OnSave = func() { t.restartPollTimer() }
+		sw.Show()
 	})
 	addMenuItem(menu, "Quit", func() { gtk.MainQuit() })
 

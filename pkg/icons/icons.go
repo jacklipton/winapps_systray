@@ -59,13 +59,13 @@ func Setup(dir string) (*Manager, error) {
 }
 
 func (m *Manager) Dir() string              { return m.dir }
-func (m *Manager) RunningName() string       { return "winapps-running" }
-func (m *Manager) StoppedName() string       { return "winapps-stopped" }
-func (m *Manager) StartingFrames() []string  { return m.startingFrames }
-func (m *Manager) StoppingFrames() []string  { return m.stoppingFrames }
-func (m *Manager) RunningDarkName() string   { return "winapps-running-dark" }
-func (m *Manager) StoppedDarkName() string   { return "winapps-stopped-dark" }
-func (m *Manager) HasDark() bool             { return m.hasDark }
+func (m *Manager) RunningName() string      { return "winapps-running" }
+func (m *Manager) StoppedName() string      { return "winapps-stopped" }
+func (m *Manager) StartingFrames() []string { return m.startingFrames }
+func (m *Manager) StoppingFrames() []string { return m.stoppingFrames }
+func (m *Manager) RunningDarkName() string  { return "winapps-running-dark" }
+func (m *Manager) StoppedDarkName() string  { return "winapps-stopped-dark" }
+func (m *Manager) HasDark() bool            { return m.hasDark }
 
 // svgIcon generates an SVG string for the winapps icon.
 // bgColor is the background fill. opacities are for panes:
