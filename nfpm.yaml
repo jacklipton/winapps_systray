@@ -4,7 +4,7 @@ version: 0.1.0
 release: 1
 maintainer: Jack Lipton
 description: System tray controller for WinApps containers
-license: GPL
+license: GPL-3.0-or-later
 homepage: https://github.com/jacklipton/winapps_systray
 
 depends:
