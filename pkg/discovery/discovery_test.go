@@ -56,8 +56,10 @@ func TestFindWinAppsDirConfigFile(t *testing.T) {
 	_ = os.WriteFile(filepath.Join(configDir, "config"), []byte(winappsDir+"\n"), 0644)
 
 	t.Setenv("WINAPPS_DIR", "")
+	t.Setenv("XDG_CONFIG_HOME", "")
 	path, _, err := findWinAppsDir(tempHome)
 	if err != nil {
+		t.Logf("Debug: tempHome=%s, winappsDir=%s, configDir=%s", tempHome, winappsDir, configDir)
 		t.Fatalf("Expected config file path, got error: %v", err)
 	}
 	if path != winappsDir {
