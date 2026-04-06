@@ -76,7 +76,7 @@ func (c *Controller) GetStatus() (State, error) {
 			return StateRunning, nil
 		}
 		// If container is stopped after a grace period, it likely crashed on startup
-		if actual == StateStopped && time.Since(c.transitionAt) > 15*time.Second {
+		if actual == StateStopped && time.Since(c.transitionAt) > time.Duration(c.settings.StartTimeoutSeconds)*time.Second {
 			c.transition = ""
 			return StateStopped, nil
 		}
