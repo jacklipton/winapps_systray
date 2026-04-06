@@ -2,7 +2,7 @@ package ui
 
 import (
         "fmt"
-        "log"
+        "log/slog"
         "os"
         "path/filepath"
         "strconv"
@@ -296,7 +296,7 @@ func (s *SettingsWindow) updateServices() {
 	s.comboService.RemoveAll()
 	services, err := discovery.ListServices(s.settings.WinAppsDir, s.engine)
 	if err != nil {
-		log.Printf("failed to list services: %v", err)
+		slog.Warn("failed to list services", "error", err)
 		return
 	}
 
@@ -329,7 +329,7 @@ func (s *SettingsWindow) onSave() {
 	s.settings.Notifications = s.chkNotify.GetActive()
 
 	if err := s.settings.Save(s.path); err != nil {
-		log.Printf("failed to save settings: %v", err)
+		slog.Error("failed to save settings", "error", err)
 		msg := gtk.MessageDialogNew(s.window, gtk.DIALOG_MODAL, gtk.MESSAGE_ERROR, gtk.BUTTONS_OK, "Failed to save settings: %v", err)
 		msg.Run()
 		msg.Destroy()
@@ -374,7 +374,7 @@ func (s *SettingsWindow) onSave() {
 	}
 
 	if err := compose.Save(s.composeFilePath, service, vmCfg); err != nil {
-	        log.Printf("failed to save VM config: %v", err)
+	        slog.Error("failed to save VM config", "error", err)
 	        msg := gtk.MessageDialogNew(s.window, gtk.DIALOG_MODAL, gtk.MESSAGE_ERROR, gtk.BUTTONS_OK,
 	                "Failed to save VM configuration: %v", err)
 	        msg.Run()

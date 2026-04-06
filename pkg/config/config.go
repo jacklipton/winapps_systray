@@ -4,7 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"io/fs"
-	"log"
+	"log/slog"
 	"os"
 	"path/filepath"
 )
@@ -56,7 +56,7 @@ func Load(path string) (*Settings, error) {
 	}
 
 	if err := json.Unmarshal(data, &cfg); err != nil {
-		log.Printf("warning: invalid settings file %s: %v (using defaults)", path, err)
+		slog.Warn("invalid settings file, using defaults", "path", path, "error", err)
 		d := defaults()
 		return &d, nil
 	}
@@ -100,11 +100,11 @@ func clamp(val, min, max int) int {
 func writeDefaults(path string, cfg *Settings) {
 	dir := filepath.Dir(path)
 	if err := os.MkdirAll(dir, 0755); err != nil {
-		log.Printf("warning: cannot create config dir %s: %v", dir, err)
+		slog.Warn("cannot create config dir", "dir", dir, "error", err)
 		return
 	}
 	data, _ := json.MarshalIndent(cfg, "", "  ")
 	if err := os.WriteFile(path, data, 0600); err != nil {
-		log.Printf("warning: cannot write default settings to %s: %v", path, err)
+		slog.Warn("cannot write default settings", "path", path, "error", err)
 	}
 }

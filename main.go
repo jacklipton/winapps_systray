@@ -17,7 +17,7 @@ package main
 
 import (
 	"fmt"
-	"log"
+	"log/slog"
 	"os"
 	"os/signal"
 	"path/filepath"
@@ -53,7 +53,7 @@ func main() {
 	settingsPath := filepath.Join(configDir, "winapps-systray", "settings.json")
 	cfg, err := config.Load(settingsPath)
 	if err != nil {
-		log.Printf("warning: failed to load settings: %v", err)
+		slog.Warn("failed to load settings", "error", err)
 		defaults := config.Settings{
 			Notifications:       true,
 			PollIntervalSeconds: 5,
@@ -67,7 +67,7 @@ func main() {
 	discoveryCfg, err := discovery.GetConfig()
 	isInitialSetup := false
 	if err != nil {
-		log.Printf("Discovery failed: %v", err)
+		slog.Warn("discovery failed", "error", err)
 		if ui.ShowSetupRequired(nil, "WinApps directory not found or engine missing.\n\nWould you like to open Settings to configure it manually?") {
 			isInitialSetup = true
 			discoveryCfg = &discovery.Config{Engine: "docker"} // Default for setup UI
@@ -81,13 +81,15 @@ func main() {
 	// Set up icons in temp directory
 	iconDir, err := os.MkdirTemp("", "winapps-icons-")
 	if err != nil {
-		log.Fatalf("Failed to create icon temp dir: %v", err)
+		slog.Error("failed to create icon temp dir", "error", err)
+		os.Exit(1)
 	}
 	defer func() { _ = os.RemoveAll(iconDir) }()
 
 	iconMgr, err := icons.Setup(iconDir)
 	if err != nil {
-		log.Fatalf("Failed to set up icons: %v", err)
+		slog.Error("failed to set up icons", "error", err)
+		os.Exit(1)
 	}
 
 	// Create dashboard (lazy — window created on first Show)
