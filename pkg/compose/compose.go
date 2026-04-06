@@ -36,9 +36,8 @@ func Validate(cfg *VMConfig) error {
         }
 
         if cfg.Version == "" {
-                return fmt.Errorf("Windows version must not be empty")
+        	return fmt.Errorf("windows version must not be empty")
         }
-
         if cfg.Username == "" {
                 return fmt.Errorf("username must not be empty")
         }
@@ -127,8 +126,7 @@ func Save(path, service string, cfg *VMConfig) error {
         if err != nil {
                 return fmt.Errorf("open compose file for writing: %w", err)
         }
-        defer f.Close()
-
+        defer func() { _ = f.Close() }()
         enc := yaml.NewEncoder(f)
         enc.SetIndent(2)
         if err := enc.Encode(&doc); err != nil {

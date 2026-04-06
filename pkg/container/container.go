@@ -144,16 +144,16 @@ func (c *Controller) pollState() (State, error) {
 	c.mu.Unlock()
 
 	state := strings.ToLower(target.State)
-	switch {
-	case state == "running":
+	switch state {
+	case "running":
 		return StateRunning, nil
-	case state == "paused":
+	case "paused":
 		return StatePaused, nil
-	case state == "starting" || state == "restarting":
+	case "starting", "restarting":
 		return StateStarting, nil
-	case state == "stopping" || state == "removing":
+	case "stopping", "removing":
 		return StateStopping, nil
-	case state == "exited" || state == "created" || state == "dead":
+	case "exited", "created", "dead":
 		return StateStopped, nil
 	default:
 		// Fallback for custom statuses

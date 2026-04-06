@@ -64,7 +64,7 @@ func readWinappsConf(home string) *winappsConf {
 	if err != nil {
 		return nil
 	}
-	defer f.Close()
+	defer func() { _ = f.Close() }()
 
 	conf := &winappsConf{}
 	scanner := bufio.NewScanner(f)

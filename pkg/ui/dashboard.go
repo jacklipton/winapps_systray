@@ -218,9 +218,10 @@ func (d *Dashboard) buildActions() *gtk.Box {
 	d.btnToggle.Connect("clicked", func() {
 		go func() {
 			status, _ := d.ctrl.GetStatus()
-			if status == container.StateRunning || status == container.StatePaused {
+			switch status {
+			case container.StateRunning, container.StatePaused:
 				_ = d.ctrl.Stop()
-			} else if status == container.StateStopped {
+			case container.StateStopped:
 				_ = d.ctrl.Start()
 			}
 		}()
@@ -232,9 +233,10 @@ func (d *Dashboard) buildActions() *gtk.Box {
 	d.btnPause.Connect("clicked", func() {
 		go func() {
 			status, _ := d.ctrl.GetStatus()
-			if status == container.StateRunning {
+			switch status {
+			case container.StateRunning:
 				_ = d.ctrl.Pause()
-			} else if status == container.StatePaused {
+			case container.StatePaused:
 				_ = d.ctrl.Unpause()
 			}
 		}()

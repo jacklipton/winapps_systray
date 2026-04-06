@@ -263,24 +263,21 @@ func (t *TrayManager) onToggle() {
 	iconPath := t.iconMgr.Dir() + "/winapps-running.svg"
 	stoppedIcon := t.iconMgr.Dir() + "/winapps-stopped.svg"
 
-	if status == container.StateRunning || status == container.StatePaused {
+	switch status {
+	case container.StateRunning, container.StatePaused:
 		glib.IdleAdd(func() bool { t.updateUI(container.StateStopping, nil); return false })
 		if err := t.ctrl.Stop(); err != nil && t.cfg.Notifications {
 			notify.Send("WinApps", fmt.Sprintf("Failed to stop Windows VM: %v", err), stoppedIcon)
 			return
 		}
-		if err := t.ctrl.WaitUntilState(container.StateStopped, time.Duration(t.cfg.StopTimeoutSeconds)*time.Second); err != nil && t.cfg.Notifications {
-			notify.Send("WinApps", "Windows VM is taking longer than expected to stop", stoppedIcon)
-		}
-	} else if status == container.StateStopped {
+		_ = t.ctrl.WaitUntilState(container.StateStopped, time.Duration(t.cfg.StopTimeoutSeconds)*time.Second)
+	case container.StateStopped:
 		glib.IdleAdd(func() bool { t.updateUI(container.StateStarting, nil); return false })
 		if err := t.ctrl.Start(); err != nil && t.cfg.Notifications {
 			notify.Send("WinApps", fmt.Sprintf("Failed to start Windows VM: %v", err), iconPath)
 			return
 		}
-		if err := t.ctrl.WaitUntilState(container.StateRunning, time.Duration(t.cfg.StartTimeoutSeconds)*time.Second); err != nil && t.cfg.Notifications {
-			notify.Send("WinApps", "Windows VM is taking longer than expected to start", iconPath)
-		}
+		_ = t.ctrl.WaitUntilState(container.StateRunning, time.Duration(t.cfg.StartTimeoutSeconds)*time.Second)
 	}
 }
 
@@ -288,11 +285,12 @@ func (t *TrayManager) onPauseToggle() {
 	status, _ := t.ctrl.GetStatus()
 	iconPath := t.iconMgr.Dir() + "/winapps-running.svg"
 
-	if status == container.StateRunning {
+	switch status {
+	case container.StateRunning:
 		if err := t.ctrl.Pause(); err != nil && t.cfg.Notifications {
 			notify.Send("WinApps", fmt.Sprintf("Failed to pause Windows VM: %v", err), iconPath)
 		}
-	} else if status == container.StatePaused {
+	case container.StatePaused:
 		if err := t.ctrl.Unpause(); err != nil && t.cfg.Notifications {
 			notify.Send("WinApps", fmt.Sprintf("Failed to resume Windows VM: %v", err), iconPath)
 		}
@@ -306,9 +304,7 @@ func (t *TrayManager) onRestart() {
 		notify.Send("WinApps", fmt.Sprintf("Failed to restart Windows VM: %v", err), iconPath)
 		return
 	}
-	if err := t.ctrl.WaitUntilState(container.StateRunning, time.Duration(t.cfg.StartTimeoutSeconds)*time.Second); err != nil && t.cfg.Notifications {
-		notify.Send("WinApps", "Windows VM is taking longer than expected to restart", iconPath)
-	}
+	_ = t.ctrl.WaitUntilState(container.StateRunning, time.Duration(t.cfg.StartTimeoutSeconds)*time.Second)
 }
 
 func (t *TrayManager) notifyTransition(prev, curr container.State) {

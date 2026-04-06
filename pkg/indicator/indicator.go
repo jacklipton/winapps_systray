@@ -41,5 +41,6 @@ func (ind *Indicator) SetIcon(iconName string) {
 // SetMenu attaches a GtkMenu to the indicator.
 // menuPtr should be obtained from gotk3's menu.Native().
 func (ind *Indicator) SetMenu(menuPtr uintptr) {
-	C.app_indicator_set_menu(ind.native, (*C.GtkMenu)(unsafe.Pointer(menuPtr)))
+	ptr := unsafe.Pointer(menuPtr) //nolint:govet // necessary for CGO
+	C.app_indicator_set_menu(ind.native, (*C.GtkMenu)(ptr))
 }

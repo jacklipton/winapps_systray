@@ -42,7 +42,7 @@ func main() {
 		ui.ShowError(nil, "WinApps Systray is already running.")
 		return
 	}
-	defer lockFile.Close()
+	defer func() { _ = lockFile.Close() }()
 
 	// Load config
 	configDir := os.Getenv("XDG_CONFIG_HOME")
@@ -83,7 +83,7 @@ func main() {
 	if err != nil {
 		log.Fatalf("Failed to create icon temp dir: %v", err)
 	}
-	defer os.RemoveAll(iconDir)
+	defer func() { _ = os.RemoveAll(iconDir) }()
 
 	iconMgr, err := icons.Setup(iconDir)
 	if err != nil {
@@ -132,7 +132,7 @@ func acquireLock() (*os.File, error) {
 		return nil, err
 	}
 	if err := syscall.Flock(int(f.Fd()), syscall.LOCK_EX|syscall.LOCK_NB); err != nil {
-		f.Close()
+		_ = f.Close()
 		return nil, fmt.Errorf("another instance is already running")
 	}
 	return f, nil
