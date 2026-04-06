@@ -24,6 +24,9 @@ func TestLoadDefaults(t *testing.T) {
 	if cfg.StopTimeoutSeconds != 120 {
 		t.Errorf("expected stop timeout 120, got %d", cfg.StopTimeoutSeconds)
 	}
+	if cfg.VNCPort != 8006 {
+		t.Errorf("expected VNC port 8006, got %d", cfg.VNCPort)
+	}
 }
 
 func TestLoadFromFile(t *testing.T) {

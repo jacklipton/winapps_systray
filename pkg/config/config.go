@@ -16,6 +16,7 @@ type Settings struct {
 	StopTimeoutSeconds  int    `json:"stop_timeout_seconds"`
 	WinAppsDir          string `json:"winapps_dir"`
 	PrimaryService      string `json:"primary_service"`
+	VNCPort             int    `json:"vnc_port"`
 }
 
 func defaults() Settings {
@@ -24,6 +25,7 @@ func defaults() Settings {
 		PollIntervalSeconds: 5,
 		StartTimeoutSeconds: 60,
 		StopTimeoutSeconds:  120,
+		VNCPort:             8006,
 	}
 }
 
@@ -72,6 +74,9 @@ func Load(path string) (*Settings, error) {
 	if cfg.StopTimeoutSeconds == 0 {
 		cfg.StopTimeoutSeconds = d.StopTimeoutSeconds
 	}
+	if cfg.VNCPort == 0 {
+		cfg.VNCPort = d.VNCPort
+	}
 
 	cfg.validate()
 
@@ -83,6 +88,7 @@ func (s *Settings) validate() {
 	s.PollIntervalSeconds = clamp(s.PollIntervalSeconds, 1, 300)
 	s.StartTimeoutSeconds = clamp(s.StartTimeoutSeconds, 1, 600)
 	s.StopTimeoutSeconds = clamp(s.StopTimeoutSeconds, 1, 600)
+	s.VNCPort = clamp(s.VNCPort, 1, 65535)
 }
 
 func clamp(val, min, max int) int {

@@ -74,11 +74,11 @@ func (t *TrayManager) Setup() {
 
 	addSeparator(menu)
 
-	t.mUptime = addMenuItem(menu, "Uptime        —", nil)
+	t.mUptime = addMenuItem(menu, "Uptime: —", nil)
 	t.mUptime.SetSensitive(false)
-	t.mMemory = addMenuItem(menu, "Memory        —", nil)
+	t.mMemory = addMenuItem(menu, "Memory: —", nil)
 	t.mMemory.SetSensitive(false)
-	t.mEngine = addMenuItem(menu, fmt.Sprintf("Engine        %s", t.ctrl.Engine()), nil)
+	t.mEngine = addMenuItem(menu, fmt.Sprintf("Engine: %s", t.ctrl.Engine()), nil)
 	t.mEngine.SetSensitive(false)
 
 	addSeparator(menu)
@@ -100,7 +100,7 @@ func (t *TrayManager) Setup() {
 	})
 
 	addMenuItem(menu, "Open VNC Setup...", func() {
-		_ = exec.Command("xdg-open", "http://127.0.0.1:8006").Start()
+		_ = exec.Command("xdg-open", fmt.Sprintf("http://127.0.0.1:%d", t.cfg.VNCPort)).Start()
 	})
 
 	t.mSettings = addMenuItem(menu, "Settings...", func() {
@@ -192,8 +192,8 @@ func (t *TrayManager) updateUI(state container.State, stats *container.Stats) {
 		// Update stats
 		if stats != nil {
 			elapsed := time.Since(t.startedAt)
-			t.mUptime.SetLabel(fmt.Sprintf("Uptime        %s", formatDuration(elapsed)))
-			t.mMemory.SetLabel(fmt.Sprintf("Memory        %s", stats.MemUsage))
+			t.mUptime.SetLabel(fmt.Sprintf("Uptime: %s", formatDuration(elapsed)))
+			t.mMemory.SetLabel(fmt.Sprintf("Memory: %s", stats.MemUsage))
 		}
 
 	case container.StatePaused:
@@ -210,7 +210,7 @@ func (t *TrayManager) updateUI(state container.State, stats *container.Stats) {
 
 		if !t.startedAt.IsZero() {
 			elapsed := time.Since(t.startedAt)
-			t.mUptime.SetLabel(fmt.Sprintf("Uptime        %s (paused)", formatDuration(elapsed)))
+			t.mUptime.SetLabel(fmt.Sprintf("Uptime: %s (paused)", formatDuration(elapsed)))
 		}
 
 	case container.StateStopped:
@@ -223,8 +223,8 @@ func (t *TrayManager) updateUI(state container.State, stats *container.Stats) {
 		t.mRestart.SetSensitive(false)
 		t.mKill.SetSensitive(false)
 		t.mDetails.SetSensitive(false)
-		t.mUptime.SetLabel("Uptime        —")
-		t.mMemory.SetLabel("Memory        —")
+		t.mUptime.SetLabel("Uptime: —")
+		t.mMemory.SetLabel("Memory: —")
 
 	case container.StateStarting:
 		t.mStatus.SetLabel("● WinApps — Starting...")
