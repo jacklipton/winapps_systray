@@ -59,7 +59,6 @@ func TestFindWinAppsDirConfigFile(t *testing.T) {
 	t.Setenv("XDG_CONFIG_HOME", "")
 	path, _, err := findWinAppsDir(tempHome)
 	if err != nil {
-		t.Logf("Debug: tempHome=%s, winappsDir=%s, configDir=%s", tempHome, winappsDir, configDir)
 		t.Fatalf("Expected config file path, got error: %v", err)
 	}
 	if path != winappsDir {
