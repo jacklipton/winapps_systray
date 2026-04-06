@@ -173,7 +173,8 @@ services:
 func TestLoad(t *testing.T) {
         dir := t.TempDir()
         path := filepath.Join(dir, "compose.yaml")
-        os.WriteFile(path, []byte(testComposeYAML), 0644)
+        _ = os.WriteFile(path, []byte(
+testComposeYAML), 0644)
 
         cfg, err := Load(path, "windows")
         if err != nil {
@@ -211,7 +212,8 @@ services:
 func TestLoadMissingKeys(t *testing.T) {
         dir := t.TempDir()
         path := filepath.Join(dir, "compose.yaml")
-        os.WriteFile(path, []byte(testComposeMissingKeys), 0644)
+        _ = os.WriteFile(path, []byte(
+testComposeMissingKeys), 0644)
 
         cfg, err := Load(path, "windows")
         if err != nil {
@@ -235,7 +237,8 @@ func TestLoadMissingKeys(t *testing.T) {
 func TestLoadMissingService(t *testing.T) {
         dir := t.TempDir()
         path := filepath.Join(dir, "compose.yaml")
-        os.WriteFile(path, []byte(testComposeMissingKeys), 0644)
+        _ = os.WriteFile(path, []byte(
+testComposeMissingKeys), 0644)
 
         _, err := Load(path, "nonexistent")
         if err == nil {
@@ -246,7 +249,8 @@ func TestLoadMissingService(t *testing.T) {
 func TestLoadMalformedYAML(t *testing.T) {
         dir := t.TempDir()
         path := filepath.Join(dir, "compose.yaml")
-        os.WriteFile(path, []byte("not: valid: yaml: [[[ "), 0644)
+        _ = os.WriteFile(path, []byte(
+"not: valid: yaml: [[[ "), 0644)
 
         _, err := Load(path, "windows")
         if err == nil {
@@ -264,7 +268,8 @@ func TestLoadFileNotFound(t *testing.T) {
 func TestSave(t *testing.T) {
         dir := t.TempDir()
         path := filepath.Join(dir, "compose.yaml")
-        os.WriteFile(path, []byte(testComposeYAML), 0644)
+        _ = os.WriteFile(path, []byte(
+testComposeYAML), 0644)
 
         newCfg := &VMConfig{
                 RAMSize:  "8G",
@@ -307,7 +312,8 @@ func TestSave(t *testing.T) {
 func TestSavePreservesComments(t *testing.T) {
         dir := t.TempDir()
         path := filepath.Join(dir, "compose.yaml")
-        os.WriteFile(path, []byte(testComposeYAML), 0644)
+        _ = os.WriteFile(path, []byte(
+testComposeYAML), 0644)
 
         newCfg := &VMConfig{
                 RAMSize:  "8G",
@@ -339,12 +345,12 @@ func TestSavePreservesComments(t *testing.T) {
 }
 
 func TestSaveCreatesBackup(t *testing.T) {
-        dir := t.TempDir()
-        path := filepath.Join(dir, "compose.yaml")
-        original := []byte(testComposeYAML)
-        os.WriteFile(path, original, 0644)
+	dir := t.TempDir()
+	path := filepath.Join(dir, "compose.yaml")
+	original := []byte(testComposeYAML)
+	_ = os.WriteFile(path, original, 0644)
 
-        newCfg := &VMConfig{
+	newCfg := &VMConfig{
                 RAMSize:  "8G",
                 CPUCores: "4",
                 DiskSize: "64G",
@@ -371,7 +377,8 @@ func TestSaveCreatesBackup(t *testing.T) {
 func TestSaveSkipsMissingKeys(t *testing.T) {
         dir := t.TempDir()
         path := filepath.Join(dir, "compose.yaml")
-        os.WriteFile(path, []byte(testComposeMissingKeys), 0644)
+        _ = os.WriteFile(path, []byte(
+testComposeMissingKeys), 0644)
 
         newCfg := &VMConfig{
                 RAMSize:  "8G",

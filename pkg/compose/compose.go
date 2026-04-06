@@ -19,18 +19,7 @@ type VMConfig struct {
         Password string
 }
 
-// envKeys maps VMConfig fields to compose environment variable names.
-var envKeys = map[string]string{
-        "RAMSize":  "RAM_SIZE",
-        "CPUCores": "CPU_CORES",
-        "DiskSize": "DISK_SIZE",
-        "Version":  "VERSION",
-        "Username": "USERNAME",
-        "Password": "PASSWORD",
-}
-
 var sizePattern = regexp.MustCompile(`^\d+[GM]$`)
-
 // Validate checks that all VMConfig fields meet their constraints.
 func Validate(cfg *VMConfig) error {
         if !sizePattern.MatchString(cfg.RAMSize) {

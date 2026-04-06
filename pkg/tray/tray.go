@@ -87,7 +87,7 @@ func (t *TrayManager) Setup() {
 	t.mPause.SetSensitive(false)
 	t.mRestart = addMenuItem(menu, "Restart", func() { go t.onRestart() })
 	t.mRestart.SetSensitive(false)
-	t.mKill = addMenuItem(menu, "Force Kill", func() { go t.ctrl.Kill() })
+	t.mKill = addMenuItem(menu, "Force Kill", func() { go func() { _ = t.ctrl.Kill() }() })
 	t.mKill.SetSensitive(false)
 
 	addSeparator(menu)
@@ -99,7 +99,7 @@ func (t *TrayManager) Setup() {
 	})
 
 	addMenuItem(menu, "Open VNC Setup...", func() {
-		exec.Command("xdg-open", "http://127.0.0.1:8006").Start()
+		_ = exec.Command("xdg-open", "http://127.0.0.1:8006").Start()
 	})
 
 	t.mSettings = addMenuItem(menu, "Settings...", func() {
@@ -363,7 +363,7 @@ func formatDuration(d time.Duration) string {
 // loadCSS injects CSS for the status header background coloring.
 func loadCSS() {
 	css, _ := gtk.CssProviderNew()
-	css.LoadFromData(`
+	_ = css.LoadFromData(`
 		.status-running { background-color: rgba(76, 175, 80, 0.15); }
 		.status-stopped { background-color: rgba(158, 158, 158, 0.15); }
 		.status-transition { background-color: rgba(255, 152, 0, 0.15); }

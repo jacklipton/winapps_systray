@@ -9,8 +9,8 @@ import (
 func TestFindWinAppsDir(t *testing.T) {
 	tempHome := t.TempDir()
 	winappsDir := filepath.Join(tempHome, "winapps")
-	os.Mkdir(winappsDir, 0755)
-	os.WriteFile(filepath.Join(winappsDir, "compose.yaml"), []byte("name: \"winapps\""), 0644)
+	_ = os.Mkdir(winappsDir, 0755)
+	_ = os.WriteFile(filepath.Join(winappsDir, "compose.yaml"), []byte("name: \"winapps\""), 0644)
 
 	path, composeFile, err := findWinAppsDir(tempHome)
 	if err != nil {
@@ -26,7 +26,7 @@ func TestFindWinAppsDir(t *testing.T) {
 
 func TestFindWinAppsDirEnvVar(t *testing.T) {
 	tempDir := t.TempDir()
-	os.WriteFile(filepath.Join(tempDir, "compose.yaml"), []byte("name: winapps"), 0644)
+	_ = os.WriteFile(filepath.Join(tempDir, "compose.yaml"), []byte("name: winapps"), 0644)
 
 	t.Setenv("WINAPPS_DIR", tempDir)
 	path, _, err := findWinAppsDir(t.TempDir())
@@ -49,11 +49,11 @@ func TestFindWinAppsDirEnvVarInvalid(t *testing.T) {
 func TestFindWinAppsDirConfigFile(t *testing.T) {
 	tempHome := t.TempDir()
 	winappsDir := t.TempDir()
-	os.WriteFile(filepath.Join(winappsDir, "compose.yaml"), []byte("name: winapps"), 0644)
+	_ = os.WriteFile(filepath.Join(winappsDir, "compose.yaml"), []byte("name: winapps"), 0644)
 
 	configDir := filepath.Join(tempHome, ".config", "winapps-systray")
-	os.MkdirAll(configDir, 0755)
-	os.WriteFile(filepath.Join(configDir, "config"), []byte(winappsDir+"\n"), 0644)
+	_ = os.MkdirAll(configDir, 0755)
+	_ = os.WriteFile(filepath.Join(configDir, "config"), []byte(winappsDir+"\n"), 0644)
 
 	t.Setenv("WINAPPS_DIR", "")
 	path, _, err := findWinAppsDir(tempHome)
@@ -68,8 +68,8 @@ func TestFindWinAppsDirConfigFile(t *testing.T) {
 func TestFindWinAppsDirComposeYml(t *testing.T) {
 	tempHome := t.TempDir()
 	winappsDir := filepath.Join(tempHome, "winapps")
-	os.Mkdir(winappsDir, 0755)
-	os.WriteFile(filepath.Join(winappsDir, "compose.yml"), []byte("name: winapps"), 0644)
+	_ = os.Mkdir(winappsDir, 0755)
+	_ = os.WriteFile(filepath.Join(winappsDir, "compose.yml"), []byte("name: winapps"), 0644)
 
 	t.Setenv("WINAPPS_DIR", "")
 	path, composeFile, err := findWinAppsDir(tempHome)
@@ -90,7 +90,7 @@ func TestListServices(t *testing.T) {
 	// Create a dummy "docker" script that outputs service names
 	mockDocker := filepath.Join(tempDir, "docker")
 	content := "#!/bin/sh\necho \"service1\nservice2\nservice3\""
-	os.WriteFile(mockDocker, []byte(content), 0755)
+	_ = os.WriteFile(mockDocker, []byte(content), 0755)
 
 	t.Setenv("PATH", tempDir+string(os.PathListSeparator)+os.Getenv("PATH"))
 

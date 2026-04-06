@@ -17,7 +17,7 @@ func ShowError(parent *gtk.Window, message string) {
 func ShowSetupRequired(parent *gtk.Window, message string) bool {
 	dialog := gtk.MessageDialogNew(parent, gtk.DIALOG_MODAL, gtk.MESSAGE_WARNING, gtk.BUTTONS_NONE, "%s", message)
 	dialog.SetTitle("WinApps Setup Required")
-	dialog.AddButton("Cancel", gtk.RESPONSE_CANCEL)
+	_, _ = dialog.AddButton("Cancel", gtk.RESPONSE_CANCEL)
 	btnSettings, _ := dialog.AddButton("Open Settings", gtk.RESPONSE_ACCEPT)
 	btnSettings.GrabFocus()
 

@@ -219,9 +219,9 @@ func (d *Dashboard) buildActions() *gtk.Box {
 		go func() {
 			status, _ := d.ctrl.GetStatus()
 			if status == container.StateRunning || status == container.StatePaused {
-				d.ctrl.Stop()
+				_ = d.ctrl.Stop()
 			} else if status == container.StateStopped {
-				d.ctrl.Start()
+				_ = d.ctrl.Start()
 			}
 		}()
 	})
@@ -233,9 +233,9 @@ func (d *Dashboard) buildActions() *gtk.Box {
 		go func() {
 			status, _ := d.ctrl.GetStatus()
 			if status == container.StateRunning {
-				d.ctrl.Pause()
+				_ = d.ctrl.Pause()
 			} else if status == container.StatePaused {
-				d.ctrl.Unpause()
+				_ = d.ctrl.Unpause()
 			}
 		}()
 	})
@@ -243,12 +243,12 @@ func (d *Dashboard) buildActions() *gtk.Box {
 
 	d.btnRestart, _ = gtk.ButtonNewWithLabel("Restart")
 	d.btnRestart.SetSensitive(false)
-	d.btnRestart.Connect("clicked", func() { go d.ctrl.Restart() })
+	d.btnRestart.Connect("clicked", func() { go func() { _ = d.ctrl.Restart() }() })
 	box.PackStart(d.btnRestart, false, false, 0)
 
 	d.btnKill, _ = gtk.ButtonNewWithLabel("Force Kill")
 	d.btnKill.SetSensitive(false)
-	d.btnKill.Connect("clicked", func() { go d.ctrl.Kill() })
+	d.btnKill.Connect("clicked", func() { go func() { _ = d.ctrl.Kill() }() })
 	box.PackStart(d.btnKill, false, false, 0)
 
 	return box

@@ -29,7 +29,9 @@ func TestLoadDefaults(t *testing.T) {
 func TestLoadFromFile(t *testing.T) {
 	dir := t.TempDir()
 	path := filepath.Join(dir, "settings.json")
-	os.WriteFile(path, []byte(`{"notifications":false,"poll_interval_seconds":10}`), 0644)
+	if err := os.WriteFile(path, []byte(`{"notifications":false,"poll_interval_seconds":10}`), 0644); err != nil {
+		t.Fatalf("failed to write test config: %v", err)
+	}
 
 	cfg, err := Load(path)
 	if err != nil {
