@@ -69,8 +69,8 @@ func (d *Dashboard) Show() {
 	grid := d.buildStatsGrid()
 	box.PackStart(grid, false, false, 0)
 
-	// Network section
-	network := d.buildNetworkSection()
+	// Info section
+	network := d.buildInfoSection()
 	box.PackStart(network, false, false, 0)
 
 	// Action buttons
@@ -174,7 +174,7 @@ func (d *Dashboard) addStatCell(grid *gtk.Grid, title, value string, col, row in
 	return val
 }
 
-func (d *Dashboard) buildNetworkSection() *gtk.Box {
+func (d *Dashboard) buildInfoSection() *gtk.Box {
 	box, _ := gtk.BoxNew(gtk.ORIENTATION_VERTICAL, 4)
 	box.SetMarginStart(20)
 	box.SetMarginEnd(20)
@@ -182,18 +182,9 @@ func (d *Dashboard) buildNetworkSection() *gtk.Box {
 	box.SetMarginBottom(8)
 
 	header, _ := gtk.LabelNew("")
-	header.SetMarkup("<small>NETWORK</small>")
+	header.SetMarkup("<small>CONFIGURATION</small>")
 	header.SetHAlign(gtk.ALIGN_START)
 	box.PackStart(header, false, false, 4)
-
-	ipRow, _ := gtk.BoxNew(gtk.ORIENTATION_HORIZONTAL, 0)
-	ipLabel, _ := gtk.LabelNew("IP Address")
-	ipLabel.SetHAlign(gtk.ALIGN_START)
-	ipRow.PackStart(ipLabel, true, true, 0)
-	d.lblIP, _ = gtk.LabelNew("—")
-	d.lblIP.SetHAlign(gtk.ALIGN_END)
-	ipRow.PackEnd(d.lblIP, false, false, 0)
-	box.PackStart(ipRow, false, false, 0)
 
 	composeRow, _ := gtk.BoxNew(gtk.ORIENTATION_HORIZONTAL, 0)
 	composeLabel, _ := gtk.LabelNew("Compose File")
@@ -203,6 +194,15 @@ func (d *Dashboard) buildNetworkSection() *gtk.Box {
 	d.lblCompose.SetHAlign(gtk.ALIGN_END)
 	composeRow.PackEnd(d.lblCompose, false, false, 0)
 	box.PackStart(composeRow, false, false, 0)
+
+	ipRow, _ := gtk.BoxNew(gtk.ORIENTATION_HORIZONTAL, 0)
+	ipLabel, _ := gtk.LabelNew("IP Address")
+	ipLabel.SetHAlign(gtk.ALIGN_START)
+	ipRow.PackStart(ipLabel, true, true, 0)
+	d.lblIP, _ = gtk.LabelNew("—")
+	d.lblIP.SetHAlign(gtk.ALIGN_END)
+	ipRow.PackEnd(d.lblIP, false, false, 0)
+	box.PackStart(ipRow, false, false, 0)
 
 	return box
 }
@@ -283,8 +283,8 @@ func (d *Dashboard) refresh() {
 			d.btnKill.SetSensitive(false)
 
 			if stats != nil {
-				d.lblMemory.SetText(stats.MemUsage)
-				d.lblCPU.SetText(fmt.Sprintf("%.1f%%", stats.CPUPercent))
+				d.lblMemory.SetMarkup(fmt.Sprintf("<b>%s</b>", stats.MemUsage))
+				d.lblCPU.SetMarkup(fmt.Sprintf("<b>%.1f%%</b>", stats.CPUPercent))
 				d.lblName.SetText(stats.Name)
 				d.lblIP.SetText(stats.IPAddress)
 			}
@@ -301,8 +301,8 @@ func (d *Dashboard) refresh() {
 		case container.StateStopped:
 			d.lblStatus.SetText("● Stopped")
 			d.lblUptime.SetText("—")
-			d.lblMemory.SetText("—")
-			d.lblCPU.SetText("—")
+			d.lblMemory.SetMarkup("—")
+			d.lblCPU.SetMarkup("—")
 			d.lblIP.SetText("—")
 			d.btnToggle.SetLabel("Start")
 			d.btnToggle.SetSensitive(true)
@@ -327,8 +327,8 @@ func (d *Dashboard) refresh() {
 		case container.StateError:
 			d.lblStatus.SetText("● Error")
 			d.lblUptime.SetText("—")
-			d.lblMemory.SetText("—")
-			d.lblCPU.SetText("—")
+			d.lblMemory.SetMarkup("—")
+			d.lblCPU.SetMarkup("—")
 			d.lblIP.SetText("—")
 			d.btnToggle.SetLabel("Start")
 			d.btnToggle.SetSensitive(true)
