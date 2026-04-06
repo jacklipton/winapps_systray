@@ -43,7 +43,8 @@ type TrayManager struct {
 	startedAt time.Time
 	animFrame int
 	animTimer glib.SourceHandle
-	pollTimer glib.SourceHandle
+	pollTimer  glib.SourceHandle
+	pollErrors int
 
 	OnDashboard OnDashboardFunc
 	Dashboard   *ui.Dashboard
@@ -133,8 +134,14 @@ func (t *TrayManager) restartPollTimer() {
 func (t *TrayManager) pollAndUpdate() {
 	status, err := t.ctrl.GetStatus()
 	if err != nil {
+		t.pollErrors++
+		if t.pollErrors == 3 && t.cfg.Notifications {
+			iconPath := t.iconMgr.Dir() + "/winapps-stopped.svg"
+			notify.Send("WinApps", fmt.Sprintf("Status polling failed: %v", err), iconPath)
+		}
 		return
 	}
+	t.pollErrors = 0
 
 	var stats *container.Stats
 	if status == container.StateRunning {
