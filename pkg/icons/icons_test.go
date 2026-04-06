@@ -14,7 +14,7 @@ func TestSetupCreatesIconFiles(t *testing.T) {
 		t.Fatalf("Setup failed: %v", err)
 	}
 
-	// Should create running, stopped, 4 starting frames, and 4 stopping frames
+	// Should create running, stopped, 4 starting frames, 4 stopping frames, and dark variants
 	expectedFiles := []string{
 		"winapps-running.svg",
 		"winapps-stopped.svg",
@@ -26,6 +26,8 @@ func TestSetupCreatesIconFiles(t *testing.T) {
 		"winapps-stopping-1.svg",
 		"winapps-stopping-2.svg",
 		"winapps-stopping-3.svg",
+		"winapps-running-dark.svg",
+		"winapps-stopped-dark.svg",
 	}
 	for _, name := range expectedFiles {
 		path := filepath.Join(dir, name)

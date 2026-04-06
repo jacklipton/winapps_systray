@@ -8,9 +8,10 @@ import (
 
 // Manager manages tray icon SVG files in a directory.
 type Manager struct {
-	dir             string
-	startingFrames  []string
-	stoppingFrames  []string
+	dir            string
+	startingFrames []string
+	stoppingFrames []string
+	hasDark        bool
 }
 
 // Setup writes all icon SVG files to dir and returns a Manager.
@@ -44,20 +45,27 @@ func Setup(dir string) (*Manager, error) {
 		stoppingFrames[i] = fmt.Sprintf("winapps-stopping-%d", i)
 	}
 
+	// Dark panel variants — lighter backgrounds for visibility on dark panels
+	icons["winapps-running-dark.svg"] = svgIcon("#4AA3DF", [4]float64{0.95, 0.85, 0.85, 0.7})
+	icons["winapps-stopped-dark.svg"] = svgIcon("#888888", [4]float64{0.5, 0.4, 0.4, 0.3})
+
 	for name, content := range icons {
 		if err := os.WriteFile(filepath.Join(dir, name), []byte(content), 0644); err != nil {
 			return nil, fmt.Errorf("write icon %s: %w", name, err)
 		}
 	}
 
-	return &Manager{dir: dir, startingFrames: startingFrames, stoppingFrames: stoppingFrames}, nil
+	return &Manager{dir: dir, startingFrames: startingFrames, stoppingFrames: stoppingFrames, hasDark: true}, nil
 }
 
 func (m *Manager) Dir() string              { return m.dir }
 func (m *Manager) RunningName() string       { return "winapps-running" }
 func (m *Manager) StoppedName() string       { return "winapps-stopped" }
 func (m *Manager) StartingFrames() []string  { return m.startingFrames }
-func (m *Manager) StoppingFrames() []string   { return m.stoppingFrames }
+func (m *Manager) StoppingFrames() []string  { return m.stoppingFrames }
+func (m *Manager) RunningDarkName() string   { return "winapps-running-dark" }
+func (m *Manager) StoppedDarkName() string   { return "winapps-stopped-dark" }
+func (m *Manager) HasDark() bool             { return m.hasDark }
 
 // svgIcon generates an SVG string for the winapps icon.
 // bgColor is the background fill. opacities are for panes:
